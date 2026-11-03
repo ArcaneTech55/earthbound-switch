@@ -93,7 +93,7 @@ void eb_switch_scene_art_frame(pixel_t *frame,int width,int height) {
                 default:continue;
             }
             const int edge_x=x<left?left:right-1;
-            const int dist=x<left?left-x:right-1-x;
+            const int dist=x<left?left-x:x-right+1;
             pixel_t edge=frame[(size_t)y*(size_t)width+(size_t)edge_x];
             frame[(size_t)y*(size_t)width+(size_t)x]=
                 blend_edge(px,edge,dist);
