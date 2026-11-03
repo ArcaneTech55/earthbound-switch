@@ -30,3 +30,6 @@ target_include_directories(eb_switch_scene_art PUBLIC
 add_executable(eb_switch_scene_art_test test_scene_art.c)
 target_link_libraries(eb_switch_scene_art_test PRIVATE eb_switch_scene_art)
 add_test(NAME switch_scene_art COMMAND eb_switch_scene_art_test)
+
+add_executable(eb_switch_scene_art_preview preview_scene_art.c)
+target_link_libraries(eb_switch_scene_art_preview PRIVATE eb_switch_scene_art)
