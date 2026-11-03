@@ -1,4 +1,5 @@
 #include "platform/platform.h"
+#include "../widescreen/layout.h"
 #include <SDL.h>
 #include <string.h>
 
@@ -40,15 +41,11 @@ void platform_video_end_frame(void) {
         EB_VIEWPORT_WIDTH*(int)sizeof(pixel_t))!=0)return;
     int width=1280,height=720;
     SDL_GetRendererOutputSize(renderer,&width,&height);
-    /* Aspect-preserving center placement. No 4:3 -> 16:9 distortion. */
-    int dst_width=width;
-    int dst_height=(int)((int64_t)width*EB_VIEWPORT_HEIGHT/EB_VIEWPORT_WIDTH);
-    if(dst_height>height) {
-        dst_height=height;
-        dst_width=(int)((int64_t)height*EB_VIEWPORT_WIDTH/EB_VIEWPORT_HEIGHT);
-    }
-    SDL_Rect dst={(width-dst_width)/2,(height-dst_height)/2,
-                  dst_width,dst_height};
+    /* No stretched widescreen: original viewport is aspect-fitted until the
+     * world renderer itself can draw additional scenery at 16:9. */
+    EbWsRect fit=eb_ws_fit((EbWsSize){EB_VIEWPORT_WIDTH,EB_VIEWPORT_HEIGHT},
+                          (EbWsSize){width,height});
+    SDL_Rect dst={fit.x,fit.y,fit.width,fit.height};
     SDL_SetRenderDrawColor(renderer,0,0,0,255);
     SDL_RenderClear(renderer);
     SDL_RenderCopy(renderer,frame_texture,NULL,&dst);
