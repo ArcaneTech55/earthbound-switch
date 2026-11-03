@@ -30,13 +30,15 @@ set(EB_EMBEDDED ON CACHE BOOL "Use safe no-op savestate backend" FORCE)
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/../../src
                  ${CMAKE_CURRENT_BINARY_DIR}/game_lib)
 
-target_compile_definitions(earthbound_game PUBLIC EB_EMBEDDED=1)
+target_compile_definitions(earthbound_game PUBLIC EB_EMBEDDED=1 EB_SWITCH_SCENE_ART=1)
+target_include_directories(earthbound_game PRIVATE "${CMAKE_CURRENT_LIST_DIR}/widescreen")
 
 add_executable(earthbound_switch
     main.c
     input_mapping.c
     widescreen/layout.c
     widescreen/scaling.c
+    widescreen/scene_art.c
     platform/switch_sdl2_input.c
     platform/switch_sdl2_video.c
     platform/switch_debug.c
