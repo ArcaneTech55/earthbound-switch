@@ -16,7 +16,7 @@ endif()
 option(EB_SWITCH_TRUE_WIDESCREEN "Build the experimental 400x225 scene renderer" ON)
 if(EB_SWITCH_TRUE_WIDESCREEN)
     set(EB_VIEWPORT_WIDTH 400 CACHE STRING "Native logical scene width" FORCE)
-    set(EB_VIEWPORT_HEIGHT 225 CACHE STRING "Native logical scene height" FORCE)
+    set(EB_VIEWPORT_HEIGHT 224 CACHE STRING "Native logical scene height" FORCE)
 else()
     set(EB_VIEWPORT_WIDTH 256 CACHE STRING "Native logical scene width" FORCE)
     set(EB_VIEWPORT_HEIGHT 224 CACHE STRING "Native logical scene height" FORCE)
@@ -60,7 +60,9 @@ target_link_libraries(earthbound_switch PRIVATE
     earthbound_game SDL2 nx m)
 target_link_options(earthbound_switch PRIVATE
     "-specs=${DEVKITPRO}/libnx/switch.specs")
-set_target_properties(earthbound_switch PROPERTIES SUFFIX ".elf")
+set_target_properties(earthbound_switch PROPERTIES
+    OUTPUT_NAME "EarthboundSwitch"
+    SUFFIX ".elf")
 
 find_program(ELF2NRO elf2nro HINTS "${DEVKITPRO}/tools/bin")
 if(NOT ELF2NRO)
@@ -68,5 +70,5 @@ if(NOT ELF2NRO)
 endif()
 add_custom_command(TARGET earthbound_switch POST_BUILD
     COMMAND "${ELF2NRO}" "$<TARGET_FILE:earthbound_switch>"
-            "${CMAKE_CURRENT_BINARY_DIR}/earthbound_switch.nro"
+            "${CMAKE_CURRENT_BINARY_DIR}/EarthboundSwitch.nro"
     COMMENT "Packing homebrew NRO")
