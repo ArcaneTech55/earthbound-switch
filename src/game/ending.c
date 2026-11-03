@@ -6,6 +6,9 @@
  */
 
 #include "game/ending.h"
+#ifdef EB_SWITCH_SCENE_ART
+#include "scene_art.h"
+#endif
 #include "game/overworld.h"
 #include "game/text.h"
 #include "game/game_state.h"
@@ -1054,6 +1057,10 @@ static void load_cast_scene(void) {
      * X = BG2 layer (NONE), as LOAD_BACKGROUND_ANIMATION passes them on to
      * LOAD_BATTLE_BG. */
     load_background_animation(BATTLEBG_LAYER_UNKNOWN279, BATTLEBG_LAYER_NONE);
+#ifdef EB_SWITCH_SCENE_ART
+    /* Cast scenes use the independently drawn cinematic sky in added pixels. */
+    eb_switch_scene_set(EB_SWITCH_SCENE_CINEMATIC);
+#endif
 
     /* Set up BG3 VRAM layout for cast */
     set_bg3_vram_location(BG_TILEMAP_SIZE_NORMAL, VRAM_CAST_TILEMAP, VRAM_CAST_TILES);
@@ -1152,6 +1159,10 @@ static void load_cast_scene(void) {
  *  INITIALIZE_CREDITS_SCENE (asm/ending/initialize_credits_scene.asm)
  * ===================================================================== */
 static void initialize_credits_scene(void) {
+#ifdef EB_SWITCH_SCENE_ART
+    /* Credits already compose their own real wide BG layers; do not cover them. */
+    eb_switch_scene_set(EB_SWITCH_SCENE_NONE);
+#endif
     force_blank_and_wait_vblank();
     clear_map_entities();
 
