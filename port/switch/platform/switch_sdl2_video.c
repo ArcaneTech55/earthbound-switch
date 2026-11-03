@@ -1,6 +1,7 @@
 #include "platform/platform.h"
 #include "../widescreen/layout.h"
 #include "../widescreen/scaling.h"
+#include "../widescreen/scene_art.h"
 #include <stdio.h>
 #include <SDL.h>
 #include <string.h>
@@ -66,6 +67,7 @@ void platform_video_send_scanline(int y,const pixel_t *pixels) {
 pixel_t *platform_video_get_framebuffer(void) { return frame; }
 void platform_video_end_frame(void) {
     if(!renderer || !frame_texture)return;
+    eb_switch_scene_art_frame(frame,EB_VIEWPORT_WIDTH,EB_VIEWPORT_HEIGHT);
     if(SDL_UpdateTexture(frame_texture,NULL,frame,
         EB_VIEWPORT_WIDTH*(int)sizeof(pixel_t))!=0)return;
     int width=1280,height=720;
