@@ -30,8 +30,19 @@ bool platform_video_init(void) {
     read_presentation_settings();
     SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY,
                 scale_mode==EB_SCALE_ASPECT_LINEAR?"linear":"nearest");
+    SDL_DisplayMode display={0};
+    int output_width=1280, output_height=720;
+    /* The Switch SDL video backend may advertise a higher resolution when
+     * docked. The game scene remains 400x225 independent of display size. */
+    if(SDL_GetCurrentDisplayMode(0,&display)==0 &&
+       display.w>=640 && display.h>=360 &&
+       display.w<=3840 && display.h<=2160) {
+        output_width=display.w;
+        output_height=display.h;
+    }
     window=SDL_CreateWindow("EarthBound Switch",SDL_WINDOWPOS_CENTERED,
-        SDL_WINDOWPOS_CENTERED,1280,720,SDL_WINDOW_SHOWN);
+        SDL_WINDOWPOS_CENTERED,output_width,output_height,
+        SDL_WINDOW_SHOWN | SDL_WINDOW_FULLSCREEN_DESKTOP);
     if(!window) return false;
     renderer=SDL_CreateRenderer(window,-1,SDL_RENDERER_ACCELERATED |
                                         SDL_RENDERER_PRESENTVSYNC);
@@ -58,7 +69,9 @@ void platform_video_end_frame(void) {
     if(SDL_UpdateTexture(frame_texture,NULL,frame,
         EB_VIEWPORT_WIDTH*(int)sizeof(pixel_t))!=0)return;
     int width=1280,height=720;
-    SDL_GetRendererOutputSize(renderer,&width,&height);
+    if(SDL_GetRendererOutputSize(renderer,&width,&height)!=0) {
+        width=1280; height=720;
+    }
     /* No stretched widescreen: original viewport is aspect-fitted until the
      * world renderer itself can draw additional scenery at 16:9. */
     EbWsRect fit=eb_scale_destination((EbWsSize){EB_VIEWPORT_WIDTH,EB_VIEWPORT_HEIGHT},
