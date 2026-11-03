@@ -62,6 +62,20 @@ static pixel_t cinematic_sky(int x,int y,uint32_t t) {
     return PIXEL_RGB(r,g,b);
 }
 
+/* Harmonize the first 24 newly authored pixels with the original art's
+ * boundary color. The neighboring pixel is used only as a palette anchor,
+ * never copied or mirrored into the added scenery. */
+static pixel_t blend_edge(pixel_t generated,pixel_t edge,int distance) {
+    if(distance>=24) return generated;
+    int weight=distance*256/24;
+    uint32_t a=pixel_to_rgb888(generated);
+    uint32_t b=pixel_to_rgb888(edge);
+    int r=(((a>>16)&255)*weight+((b>>16)&255)*(256-weight))/256;
+    int g=(((a>>8)&255)*weight+((b>>8)&255)*(256-weight))/256;
+    int bl=((a&255)*weight+(b&255)*(256-weight))/256;
+    return PIXEL_RGB(r,g,bl);
+}
+
 void eb_switch_scene_art_frame(pixel_t *frame,int width,int height) {
     if(!frame || active_scene==EB_SWITCH_SCENE_NONE ||
        width<=SNES_WIDTH || height<=0) return;
@@ -78,7 +92,11 @@ void eb_switch_scene_art_frame(pixel_t *frame,int width,int height) {
                     px=cinematic_sky(x,y,animation_frame);break;
                 default:continue;
             }
-            frame[(size_t)y*(size_t)width+(size_t)x]=px;
+            const int edge_x=x<left?left:right-1;
+            const int dist=x<left?left-x:right-1-x;
+            pixel_t edge=frame[(size_t)y*(size_t)width+(size_t)edge_x];
+            frame[(size_t)y*(size_t)width+(size_t)x]=
+                blend_edge(px,edge,dist);
         }
     }
     animation_frame++;
