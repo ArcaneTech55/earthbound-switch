@@ -22,6 +22,9 @@
  */
 
 #include "game/overworld_internal.h"
+#ifdef EB_SWITCH_SCENE_ART
+#include "scene_art.h"
+#endif
 #include "core/lost_frame_check.h"
 #include "game/ending.h"
 #include "game/battle.h"
@@ -78,6 +81,9 @@ OverworldState ow = {
 
 /* ---- OVERWORLD_SETUP_VRAM (asm/overworld/setup_vram.asm) ---- */
 void overworld_setup_vram(void) {
+#ifdef EB_SWITCH_SCENE_ART
+    eb_switch_scene_set(EB_SWITCH_SCENE_NONE);
+#endif
     /* SET_BGMODE(9): mode 1, BG3 priority bit set */
     ppu.bgmode = 0x09;
 
