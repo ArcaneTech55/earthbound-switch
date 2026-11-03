@@ -16,3 +16,9 @@ target_include_directories(eb_switch_input_mapping PUBLIC
 add_executable(eb_switch_input_mapping_test ../test_input_mapping.c)
 target_link_libraries(eb_switch_input_mapping_test PRIVATE eb_switch_input_mapping)
 add_test(NAME switch_button_mapping COMMAND eb_switch_input_mapping_test)
+
+add_library(eb_switch_scaling STATIC scaling.c)
+target_link_libraries(eb_switch_scaling PUBLIC eb_switch_widescreen)
+add_executable(eb_switch_scaling_test test_scaling.c)
+target_link_libraries(eb_switch_scaling_test PRIVATE eb_switch_scaling)
+add_test(NAME switch_scaling COMMAND eb_switch_scaling_test)
