@@ -1,6 +1,6 @@
 # EarthBound Switch — native port (experimental)
 
-**Status: first-pass executable scaffolding, NOT compiled or hardware-verified.**
+**Status: experimental widescreen engine configuration and executable scaffolding, NOT compiled or hardware-verified.**
 No playable release is available yet.
 
 ## Already implemented on the development branch
@@ -12,13 +12,16 @@ No playable release is available yet.
 - `platform/switch_sdl2_input.c`: SDL2 controller state, hotplug, Nintendo labels
 - Reuses the existing desktop SDL audio/timer and file-backed SRAM implementations
 - `platform/switch_debug.c`: early-port debug no-ops
+- `widescreen/scaling.[ch]`: nearest-neighbor aspect-fit, integer pixel scaling and optional linear scaling
 - `widescreen/layout.[ch]`: 400x225 logical 16:9 layout foundation,
   rect placement and signed tile-grid math
 - Tests for input mapping and widescreen presentation math
 
-The current executable configuration **intentionally uses 256x224** because
-the actual world, UI, battle, and cutscene renderers are not widescreen-ready.
-It preserves the source geometry rather than stretching it.
+The native renderer now defaults to an **experimental 400x225 16:9 viewport**,
+leveraging the upstream engine's wide-tilemap and full-coordinate sprite paths.
+Disable with `-DEB_SWITCH_TRUE_WIDESCREEN=OFF` to fall back to 256x224.
+Not all game scenes and effects have been adapted, so the widescreen output
+is **not yet guaranteed to be complete or artifact-free**.
 
 ## Requirements (development machine)
 
@@ -68,3 +71,25 @@ On-device SRAM is intended to be stored at
 
 The target is still native 1280x720 *true* widescreen; nothing is considered
 finished merely because it stretches a smaller source image.
+
+## Resolution scaling modes
+
+Create `sdmc:/switch/earthbound-switch/scaling.cfg` on your SD card.
+Put exactly one of the following values on the first line:
+
+- `nearest` (default): preserve aspect ratio, nearest-neighbor filtering.
+  With the experimental 400x225 scene, fills 1280x720 (3.2x pixels).
+- `integer`: use the largest whole-number scale and center the picture.
+  A 400x225 viewport at 1280x720 displays 1200x675 (3x), with borders.
+- `linear`: aspect fit with smooth bilinear interpolation (optional, not
+  recommended for original pixel-art appearance).
+
+The output display resolution is requested as 1280x720. The scaling
+calculation uses the **actual SDL renderer output size**, not a hardcoded
+window size, so it can also adapt if the video backend exposes a different
+resolution (e.g. 1920x1080 in docked mode). Scaling does **not** create
+additional map content; only the logical game viewport changes that.
+
+The title, battle backgrounds, PSI effects and cinematics still require
+scene-specific fixes and new art. The widescreen compile option is not a
+guarantee that these scenes have been fully adapted.
