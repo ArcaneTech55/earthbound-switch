@@ -1,5 +1,7 @@
 #include "platform/platform.h"
 #include "../widescreen/layout.h"
+#include "../widescreen/scaling.h"
+#include <stdio.h>
 #include <SDL.h>
 #include <string.h>
 
@@ -10,8 +12,23 @@ static SDL_Renderer *renderer;
 static SDL_Texture *frame_texture;
 static pixel_t frame[EB_VIEWPORT_WIDTH*EB_VIEWPORT_HEIGHT];
 static bool use_vsync=true;
+static EbScaleMode scale_mode=EB_SCALE_ASPECT_NEAREST;
+
+static void read_presentation_settings(void) {
+    FILE *f=fopen("sdmc:/switch/earthbound-switch/scaling.cfg","r");
+    if(!f)return;
+    char mode[32]={0};
+    if(fgets(mode,sizeof(mode),f)) {
+        mode[strcspn(mode,"\\r\\n")]=0;
+        scale_mode=eb_scale_mode_parse(mode);
+    }
+    fclose(f);
+}
 
 bool platform_video_init(void) {
+    read_presentation_settings();
+    SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY,
+                scale_mode==EB_SCALE_ASPECT_LINEAR?"linear":"nearest");
     window=SDL_CreateWindow("EarthBound Switch",SDL_WINDOWPOS_CENTERED,
         SDL_WINDOWPOS_CENTERED,1280,720,SDL_WINDOW_SHOWN);
     if(!window) return false;
@@ -43,8 +60,8 @@ void platform_video_end_frame(void) {
     SDL_GetRendererOutputSize(renderer,&width,&height);
     /* No stretched widescreen: original viewport is aspect-fitted until the
      * world renderer itself can draw additional scenery at 16:9. */
-    EbWsRect fit=eb_ws_fit((EbWsSize){EB_VIEWPORT_WIDTH,EB_VIEWPORT_HEIGHT},
-                          (EbWsSize){width,height});
+    EbWsRect fit=eb_scale_destination((EbWsSize){EB_VIEWPORT_WIDTH,EB_VIEWPORT_HEIGHT},
+                                          (EbWsSize){width,height},scale_mode);
     SDL_Rect dst={fit.x,fit.y,fit.width,fit.height};
     SDL_SetRenderDrawColor(renderer,0,0,0,255);
     SDL_RenderClear(renderer);
