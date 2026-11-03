@@ -10,10 +10,17 @@ if(NOT CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|AArch64")
     message(WARNING "Configure this project with the devkitPro Switch toolchain, not the host compiler")
 endif()
 
-# First deliver a faithful, original-viewport Switch port, then expand
-# scene rendering. Merely setting viewport width to 400 is not true 16:9.
-set(EB_VIEWPORT_WIDTH 256 CACHE STRING "Initial renderer width" FORCE)
-set(EB_VIEWPORT_HEIGHT 224 CACHE STRING "Initial renderer height" FORCE)
+# Experimental native wide viewport: the shared PPU supports wider tilemaps,
+# world-space OAM and per-layer viewport modes. This is NOT merely upscaling
+# the 256x224 framebuffer. Some scene-specific assets still need conversion.
+option(EB_SWITCH_TRUE_WIDESCREEN "Build the experimental 400x225 scene renderer" ON)
+if(EB_SWITCH_TRUE_WIDESCREEN)
+    set(EB_VIEWPORT_WIDTH 400 CACHE STRING "Native logical scene width" FORCE)
+    set(EB_VIEWPORT_HEIGHT 225 CACHE STRING "Native logical scene height" FORCE)
+else()
+    set(EB_VIEWPORT_WIDTH 256 CACHE STRING "Native logical scene width" FORCE)
+    set(EB_VIEWPORT_HEIGHT 224 CACHE STRING "Native logical scene height" FORCE)
+endif()
 set(EB_ENABLE_AUDIO ON CACHE BOOL "Keep SPC700 audio engine" FORCE)
 set(EB_EMBEDDED ON CACHE BOOL "Use safe no-op savestate backend" FORCE)
 # The library (not just the executable) compiles the savestate stub.
