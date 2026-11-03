@@ -12,6 +12,7 @@ No playable release is available yet.
 - `platform/switch_sdl2_input.c`: SDL2 controller state, hotplug, Nintendo labels
 - Reuses the existing desktop SDL audio/timer and file-backed SRAM implementations
 - `platform/switch_debug.c`: early-port debug no-ops
+- `widescreen/scene_art.[ch]`: original deterministic procedural extension art for title, battle and selected cinematic gutters, with non-mirrored palette transitions
 - `widescreen/scaling.[ch]`: nearest-neighbor aspect-fit, integer pixel scaling and optional linear scaling
 - `widescreen/layout.[ch]`: 400x225 logical 16:9 layout foundation,
   rect placement and signed tile-grid math
@@ -90,6 +91,12 @@ window size, so it can also adapt if the video backend exposes a different
 resolution (e.g. 1920x1080 in docked mode). Scaling does **not** create
 additional map content; only the logical game viewport changes that.
 
-The title, battle backgrounds, PSI effects and cinematics still require
-scene-specific fixes and new art. The widescreen compile option is not a
-guarantee that these scenes have been fully adapted.
+The title and battle renderer now have *initial procedural horizontal extension*
+art. This is not a completed pixel-by-pixel remake: title animations, PSI,
+battle windows, cinematics, and full-width bespoke compositions still need
+scene-by-scene validation and additional authored assets.
+
+Private-ROM build helper (Docker and official devkitPro image; unverified):
+`bash port/switch/build-with-rom.sh /path/to/your/EarthBound-USA.sfc`
+This script mounts the ROM read-only, extracts it locally, and attempts to
+build `earthbound_switch.nro`. Do not commit or upload the ROM.
