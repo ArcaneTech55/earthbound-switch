@@ -29,6 +29,7 @@ add_executable(earthbound_switch
     main.c
     input_mapping.c
     widescreen/layout.c
+    widescreen/scaling.c
     platform/switch_sdl2_input.c
     platform/switch_sdl2_video.c
     platform/switch_debug.c
