@@ -16,9 +16,14 @@ set(EB_VIEWPORT_WIDTH 256 CACHE STRING "Initial renderer width" FORCE)
 set(EB_VIEWPORT_HEIGHT 224 CACHE STRING "Initial renderer height" FORCE)
 set(EB_ENABLE_AUDIO ON CACHE BOOL "Keep SPC700 audio engine" FORCE)
 set(EB_EMBEDDED ON CACHE BOOL "Use safe no-op savestate backend" FORCE)
+# The library (not just the executable) compiles the savestate stub.
+# Its source checks EB_EMBEDDED at compile time.
+
 
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/../../src
                  ${CMAKE_CURRENT_BINARY_DIR}/game_lib)
+
+target_compile_definitions(earthbound_game PUBLIC EB_EMBEDDED=1)
 
 add_executable(earthbound_switch
     main.c
