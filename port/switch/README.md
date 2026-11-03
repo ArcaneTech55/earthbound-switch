@@ -1,44 +1,70 @@
-# EarthBound native Switch / true widescreen development
+# EarthBound Switch — native port (experimental)
 
-**Development status: incomplete. Not yet a playable Nintendo Switch app.**
+**Status: first-pass executable scaffolding, NOT compiled or hardware-verified.**
+No playable release is available yet.
 
-## Goals
-- Nintendo Switch homebrew `.nro` built with devkitPro/libnx
-- Genuine 16:9 scenes at a 1280×720 output resolution (400×225 logical layout)
-- Preserve sprite pixel proportions; expose more overworld world-space tiles
-- Extend the title, battles, PSI animations, dialogue, menus, and all cutscenes
-- Use newly authored 16:9 assets where the original graphics cannot be extended
-- Preserve saves, audio, and portable controller support
+## Already implemented on the development branch
 
-## Implemented in this branch
-- `widescreen/layout.[ch]`: layout, aspect-fit, anchors and negative world-tile division
-- `input_mapping.[ch]`: Nintendo-labeled buttons → EarthBound SNES pad bits
-- `platform/switch_sdl2_input.c`: SDL2 controller detection, hot-plugging, per-frame sampling
-- Standalone host-side regression tests for both the layout and controller mapper
+- `main.c`: libnx SD mount, SDL init, game loop, lifecycle/cleanup
+- `platform/switch_sdl2_video.c`: scanline BGR565 texture upload, renderer,
+  correct aspect-fit center placement on a 1280x720 display (temporary borders,
+  NOT fake widescreen)
+- `platform/switch_sdl2_input.c`: SDL2 controller state, hotplug, Nintendo labels
+- Reuses the existing desktop SDL audio/timer and file-backed SRAM implementations
+- `platform/switch_debug.c`: early-port debug no-ops
+- `widescreen/layout.[ch]`: 400x225 logical 16:9 layout foundation,
+  rect placement and signed tile-grid math
+- Tests for input mapping and widescreen presentation math
 
-The SDL2 driver is **a platform module, not yet built into a playable game**.
-Its button labels and hot-plug behavior need real Switch hardware validation.
+The current executable configuration **intentionally uses 256x224** because
+the actual world, UI, battle, and cutscene renderers are not widescreen-ready.
+It preserves the source geometry rather than stretching it.
 
-## Host tests
+## Requirements (development machine)
+
+- devkitPro / devkitA64 / libnx / Switch SDL2 portlibs
+- CMake and a working Switch CMake toolchain (configure CMake for aarch64-none-elf)
+- Python 3.10+, the project's `ebtools` package, initialized git submodules
+- Your **own** US EarthBound SNES ROM, for local asset extraction
+
+The port relies on the asset-generation infrastructure in `src/CMakeLists.txt`.
+From the repository root, initialize the submodules, set up a host Python
+environment and run `ebtools extract earthbound.yml donor.sfc` before configuring.
+See the root README and `make unix` for details on extraction.
+
+Do **not** add the ROM or extracted copyrighted game assets to GitHub.
+The executable's output folder is intended for local builds only.
+
+## Experimental build attempt
+
+Example using a devkitPro installation that provides a Switch CMake toolchain:
+
 ```sh
-cmake -S port/switch/widescreen -B build/switch-host-tests
-cmake --build build/switch-host-tests
-ctest --test-dir build/switch-host-tests --output-on-failure
+export DEVKITPRO=/opt/devkitpro
+export DEVKITA64="$DEVKITPRO/devkitA64"
+# First: install switch-dev, install ebtools, and extract your own ROM locally.
+cmake -S port/switch -B port/switch/build \
+  -DCMAKE_TOOLCHAIN_FILE="$DEVKITPRO/cmake/Switch.cmake" \
+  -DCMAKE_BUILD_TYPE=Release
+cmake --build port/switch/build -j4
 ```
 
-## Next milestones
-1. Wire the Switch platform backend to `src/platform/platform.h` using devkitPro/libnx,
-   with a working game loop, video, audio, and save storage.
-2. Confirm native gameplay on Switch at the original viewport without aspect distortion.
-3. Expand the game renderer to draw additional world-space scenery in a 16:9 viewport.
-4. Rebuild the title, battle backgrounds, UI, PSI, cinematics, and endings for widescreen.
-5. Test on real hardware and package a release `.nro`.
+The exact location of the toolchain file is installation-dependent. This
+CMake build configuration is currently **unverified**, and will likely need
+linker/toolchain adjustments on a real devkitPro environment. No `.nro`
+should be considered playable until it builds and passes hardware smoke tests.
 
-Simply setting `EB_VIEWPORT_WIDTH=400` or stretching 256×224 is **not**
-equivalent to implementing this project's true widescreen renderer.
+On-device SRAM is intended to be stored at
+`sdmc:/switch/earthbound-switch/earthbound.srm`.
 
-## Copyright and privacy
-Game assets are extracted locally from a legally obtained personal ROM. Do
-not commit `.sfc`, `.smc`, extracted game data, or save files to this
-public GitHub repository. The base project's `.gitignore` already excludes
-`*.sfc` and common extracted output directories.
+## True widescreen next steps
+
+1. Establish an actual successfully linked `.nro` and test title/menu/input/audio/SRAM.
+2. Audit and change the PPU/background scanline renderer, overworld camera,
+   object culling, tilemap streaming, and scroll bounds for full-width world draw.
+3. Create true 16:9 title screen, opening/ending, cutscenes, dialogue/menus,
+   battle backgrounds and PSI effects, with authentic pixel-art dimensions.
+4. Validate cinematics, battle layout, edge cases, performance, and saves.
+
+The target is still native 1280x720 *true* widescreen; nothing is considered
+finished merely because it stretches a smaller source image.
