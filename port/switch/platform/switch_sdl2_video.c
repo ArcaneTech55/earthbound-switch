@@ -5,8 +5,9 @@
 #include <SDL.h>
 #include <string.h>
 
-/* Base-port video path: original geometry, never stretch to 16:9.
- * This is deliberately separate from the eventual scene-level 16:9 renderer. */
+/* Presents the native game renderer viewport without changing scene geometry.
+ * The optional 400x225 viewport draws additional world content where supported.
+ * Remaining scene-specific artwork still needs proper widescreen authoring. */
 static SDL_Window *window;
 static SDL_Renderer *renderer;
 static SDL_Texture *frame_texture;
@@ -19,7 +20,7 @@ static void read_presentation_settings(void) {
     if(!f)return;
     char mode[32]={0};
     if(fgets(mode,sizeof(mode),f)) {
-        mode[strcspn(mode,"\\r\\n")]=0;
+        mode[strcspn(mode,"\r\n")]=0;
         scale_mode=eb_scale_mode_parse(mode);
     }
     fclose(f);
