@@ -1,0 +1,35 @@
+name: Switch foundation tests
+
+on:
+  push:
+    branches:
+      - feature/switch-true-widescreen-foundation
+  pull_request:
+    paths:
+      - 'port/switch/**'
+      - '.github/workflows/switch-foundation-tests.yml'
+
+jobs:
+  host-unit-tests:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure
+        run: cmake -S port/switch/widescreen -B build/switch-host-tests -DCMAKE_BUILD_TYPE=Debug
+      - name: Compile
+        run: cmake --build build/switch-host-tests --parallel 2
+      - name: Test
+        run: ctest --test-dir build/switch-host-tests --output-on-failure
+      - name: Render original widescreen artwork samples
+        run: |
+          mkdir -p build/switch-art-previews
+          cd build/switch-art-previews
+          ../switch-host-tests/eb_switch_scene_art_preview
+      - name: Upload art previews
+        uses: actions/upload-artifact@v4
+        with:
+          name: earthbound-widescreen-scene-art-previews
+          path: build/switch-art-previews/*.ppm
+          if-no-files-found: error

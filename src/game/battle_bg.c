@@ -1,4 +1,7 @@
 #include "game/battle_bg.h"
+#ifdef EB_SWITCH_SCENE_ART
+#include "scene_art.h"
+#endif
 #include "game/battle.h"
 #include "entity/entity.h"
 #include "snes/ppu.h"
@@ -70,6 +73,11 @@ void battle_bg_init(void) {
 void battle_bg_load_at(uint16_t bg_id, uint16_t gfx_vram_addr,
                        uint16_t arr_vram_addr, uint8_t cgram_start) {
     battle_bg_init();
+#ifdef EB_SWITCH_SCENE_ART
+    eb_switch_scene_set(bg_id==BATTLEBG_FILE_SELECT ? EB_SWITCH_SCENE_NONE :
+                        bg_id==BATTLEBG_GAS_STATION ? EB_SWITCH_SCENE_CINEMATIC :
+                        EB_SWITCH_SCENE_BATTLE);
+#endif
 
     uint16_t gfx_index, pal_index, arr_index;
 

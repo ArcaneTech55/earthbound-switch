@@ -39,6 +39,9 @@
 
 /* Forward declarations from main.c */
 #include "game_main.h"
+#ifdef EB_SWITCH_SCENE_ART
+#include "scene_art.h"
+#endif
 
 
 /*
@@ -125,6 +128,9 @@ static StepResult title_fadeout_step(TitleScreenState *s) {
             return STEP_RESULT_CONTINUE();
         }
         ppu.bg_viewport_fill[0] = BG_VIEWPORT_CENTER;
+#ifdef EB_SWITCH_SCENE_ART
+        eb_switch_scene_set(EB_SWITCH_SCENE_NONE);
+#endif
         ppu.sprite_x_offset = 0;
         ppu.sprite_y_offset = 0;
         ert.actionscript_state = 0;
@@ -369,6 +375,9 @@ void title_screen_setup(uint16_t quick_mode) {
      * This avoids glow/letter wraparound while filling the borders with
      * the dark space color from the image edges. */
     ppu.bg_viewport_fill[0] = BG_VIEWPORT_CLAMP;
+#ifdef EB_SWITCH_SCENE_ART
+    eb_switch_scene_set(EB_SWITCH_SCENE_TITLE);
+#endif
 
     /* Shift sprites to match the centered BG.  Non-filling BGs are rendered
      * at SNES_WIDTH and then centered in the viewport (temp_nf path), so
