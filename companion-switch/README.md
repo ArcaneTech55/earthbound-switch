@@ -115,3 +115,8 @@ graphics and speed are persisted after restart until explicitly verified.
 Source: `companion-switch/companion_hub.c`, wired into the generated Switch
 SDL video/input frontend via `companion-switch/stage.py`. Build and hardware
 testing on an actual Switch are still needed.
+
+
+### Console-style overlay redesign
+
+The original teal Companion Hub has been replaced with a minimal console-style layout: a blurred real gameplay backdrop, a soft black scrim, a white rectangular selection bar in the left menu, a fine vertical dividing rule, four outlined status cards on the right, and simple A/B footer prompts. The right cards show **real graphics/speed settings** and are not fictional suspend slots. Suspend-point previews and rewind remain unimplemented. Visual output and performance have not been verified on Switch hardware.
