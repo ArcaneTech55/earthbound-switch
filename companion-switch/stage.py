@@ -170,7 +170,7 @@ def main():
     audio_source = STAGE / "port" / "unix" / "platform" / "sdl2_audio.c"
     audio_text = audio_source.read_text()
     if "#include <stdio.h>" not in audio_text:
-        audio_text="#include <stdio.h>\\n" + audio_text
+        audio_text="#include <stdio.h>\n" + audio_text
     audio_marker="void platform_audio_shutdown(void) {"
     if audio_marker not in audio_text:
         raise RuntimeError("Companion audio shutdown marker missing")
@@ -442,6 +442,28 @@ bool companion_suspend_action(int,int,const uint16_t*,int,int);''',
     s = replace_required(s, '        host_root_boundary();',
                          '        host_root_boundary();\n        companion_suspend_frame_tick();',
                          "Companion rewind history capture")
+    s = replace_required(s, '    bool audio_started = false;',
+                         '''    bool audio_started = false;
+    bool hub_audio_paused = false;''',
+                         "Companion pause audio state")
+    s = replace_required(s, 'void companion_hub_present_paused(void);',
+                         '''void companion_hub_present_paused(void);
+void companion_audio_pause(bool paused);''',
+                         "Companion pause audio declaration")
+    s = replace_required(s, '        if (eb_switch_menu_open) {',
+                         '''        if (eb_switch_menu_open) {
+            if (audio_started && !hub_audio_paused) {
+                companion_audio_pause(true);
+                hub_audio_paused = true;
+            }''',
+                         "Companion freeze audio when menu opens")
+    s = replace_required(s, '        game_loop_step();',
+                         '''        if (hub_audio_paused) {
+            companion_audio_pause(false);
+            hub_audio_paused = false;
+        }
+        game_loop_step();''',
+                         "Companion resume audio when menu closes")
     main_file.write_text(s)
 
     for name in ("platform/switch_sdl2_video.c", "platform/switch_sdl2_input.c"):
