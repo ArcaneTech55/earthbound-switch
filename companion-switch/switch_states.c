@@ -68,9 +68,4 @@ size_t platform_savestate_read(int slot,size_t offset,void *dst,size_t size) {
     return got;
 }
 
-/* Tamp compression and decompression use temporary workspace at root boundary. */
-void *platform_savestate_scratch(size_t *out_bytes) {
-    static uint8_t scratch[16 * 1024];
-    if (out_bytes) *out_bytes = sizeof(scratch);
-    return scratch;
-}
+/* Compressor scratch is provided once by companion_compat.c (aligned 32 KiB). */
