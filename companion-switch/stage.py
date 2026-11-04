@@ -52,7 +52,7 @@ def main():
     # the path explicitly (rather than touching the read-only native checkout).
     s = s.replace("EarthboundSwitch", "EarthBoundCompanion")
     s = replace_required(s, 'add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/../../src"',
-                         'set(EB_ACHIEVEMENTS_CORE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../Achievements/Core" CACHE PATH "Companion achievement core" FORCE)\\nadd_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/../../src"',
+                         'set(EB_ACHIEVEMENTS_CORE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../Achievements/Core" CACHE PATH "Companion achievement core" FORCE)\nadd_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/../../src"',
                          "Companion achievement core path")
     s = s.replace('NAME "EarthBound Switch"', 'NAME "EarthBound Companion"')
     s = s.replace('AUTHOR "EarthBound Switch Homebrew"', 'AUTHOR "Companion Switch community port"')
