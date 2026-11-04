@@ -182,10 +182,10 @@ def main():
     # before game_init(); the old vanilla frontend never needed this step.
     # Settings were never loaded by the standalone Switch entrypoint.
     s = replace_required(s, '#include "game_main.h"',
-                         '#include "game_main.h"\\n#include "platform/pc_options.h"',
+                         '#include "game_main.h"\n#include "platform/pc_options.h"',
                          "Companion options header")
     s = replace_required(s, '    trace("Initializing SDL subsystems");',
-                         '    pc_options_defaults();\\n    trace("Companion audio volume initialized");\\n    trace("Initializing SDL subsystems");',
+                         '    pc_options_defaults();\n    trace("Companion audio volume initialized");\n    trace("Initializing SDL subsystems");',
                          "Companion default PC options")
     s = replace_required(s, '#include "platform/platform.h"',
                          '#include "platform/platform.h"\n#include "game/settings.h"',
