@@ -592,6 +592,10 @@ static pixel_t smooth_frame[EB_VIEWPORT_WIDTH*2*EB_VIEWPORT_HEIGHT*2];''',
         'bool eb_switch_menu_fast_forward = false;\nstatic bool fast_forward_aux_pulse = false;\nstatic bool menu_combo_latched = false;',
         "Companion Hub fast-forward state")
     input_text = replace_required(
+        input_text, 'static bool menu_combo_latched = false;',
+        'static uint16_t switch_quicksave_aux = 0;\\nstatic bool menu_combo_latched = false;',
+        "Switch quicksave shortcut state")
+    input_text = replace_required(
         input_text, 'static uint32_t frame_counter = 0;',
         '''static uint32_t frame_counter = 0;
 int companion_hub_action = 0;
@@ -624,6 +628,24 @@ static uint16_t menu_previous_pad;''',
         '    menu_combo_latched = combo;',
         "Menu combo latch")
     input_text = replace_required(
+        input_text, '    uint16_t next = eb_switch_map_pad(buttons);',
+        '''    /* ZR + Nintendo Y requests engine quick save; ZR + Nintendo X
+         * requests engine quick load. Suppress the face button from gameplay.
+         * Central aux edge detection ensures one request per press. */
+    switch_quicksave_aux = 0;
+    if (controller && !eb_switch_menu_open &&
+        SDL_GameControllerGetAxis(controller, SDL_CONTROLLER_AXIS_TRIGGERRIGHT) > 16000) {
+        if (SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_X)) {
+            switch_quicksave_aux = AUX_SAVESTATE;
+            buttons &= ~EB_SW_BTN_Y;
+        } else if (SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_Y)) {
+            switch_quicksave_aux = AUX_LOAD_STATE;
+            buttons &= ~EB_SW_BTN_X;
+        }
+    }
+    uint16_t next = eb_switch_map_pad(buttons);''',
+        "Engine quick-save/load Switch controller shortcuts")
+    input_text = replace_required(
         input_text, '    if (eb_switch_menu_open) {\n        uint16_t pressed = eb_switch_pad_pressed(held, next);',
         '''    if (eb_switch_menu_open) {
         uint16_t pressed = eb_switch_pad_pressed(menu_previous_pad, next);
@@ -651,13 +673,14 @@ static uint16_t menu_previous_pad;''',
     input_text = replace_required(
         input_text, 'uint16_t platform_input_get_aux(void) { return 0; }',
         '''uint16_t platform_input_get_aux(void) {
+    uint16_t aux = switch_quicksave_aux;
     if (fast_forward_aux_pulse) {
         fast_forward_aux_pulse = false;
-        return AUX_FAST_FORWARD;
+        aux |= AUX_FAST_FORWARD;
     }
-    return 0;
+    return aux;
 }''',
-        "Companion Hub fast-forward auxiliary button")
+        "Companion Hub quick-save and fast-forward auxiliary buttons")
     input_text = replace_required(
         input_text, '    held = next;',
         '''    if (!eb_switch_menu_open) menu_previous_pad=0;
