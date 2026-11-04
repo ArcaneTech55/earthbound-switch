@@ -38,3 +38,25 @@ See the upstream UPSTREAM.md, LEGAL.md and LICENSE.md. Companion's original code
     switch/earthbound-companion/saves/
 
 Companion's repository is not modified by this branch.
+
+
+## Switch linking and runtime asset requirements
+
+The experimental build now links a Switch compatibility module for Companion's
+optional desktop MSU1 audio, diagnostic video functions, and savestate scratch.
+These hooks **do not** implement desktop-only MSU1 PCM playback, post-processing,
+or diagnostic screenshots; standard SPC700 audio and 400x224 PPU rendering are
+the intended first port targets. Do not count optional features as verified.
+
+To boot, the Switch requires a **compatible Companion runtime asset pack** at
+`sdmc:/switch/earthbound-companion/assets.pak`, produced by the upstream
+Companion/ebtools asset pipeline from the user's own legally obtained EarthBound
+ROM. A vanilla project assets.pak or extracted ROM files are not interchangeable:
+the runtime verifies pack format, layout hash and asset count before starting.
+The NRO does not bundle the proprietary game assets. If the pack is missing or
+incompatible, startup stops and writes an error code to
+`sdmc:/switch/earthbound-companion/startup.log` rather than running on invalid data.
+
+A completed cross-compile does not demonstrate launch or gameplay. Validate
+assets, input, audio, saves and Companion features on Switch before treating the
+port as playable. Keep the experimental NRO separate from vanilla EarthBound.
