@@ -464,11 +464,11 @@ static pixel_t smooth_frame[EB_VIEWPORT_WIDTH*2*EB_VIEWPORT_HEIGHT*2];''',
         "Switch existing texture upload")
     video_text = replace_required(
         video_text, '#include "game/settings.h"',
-        '#include "game/settings.h"\nvoid companion_hub_draw(SDL_Renderer*,int,int);',
+        '#include "game/settings.h"\nvoid companion_hub_draw(SDL_Renderer*,int,int,const uint16_t*,int,int);',
         "Companion Hub render declaration")
     video_text = replace_required(
         video_text, '    SDL_RenderPresent(renderer);',
-        '    companion_hub_draw(renderer,width,height);\n    SDL_RenderPresent(renderer);',
+        '    companion_hub_draw(renderer,width,height,(const uint16_t*)frame,EB_VIEWPORT_WIDTH,EB_VIEWPORT_HEIGHT);\n    SDL_RenderPresent(renderer);',
         "Companion Hub presentation")
     video.write_text(video_text)
 
