@@ -129,7 +129,7 @@ def main():
     cmake = dst / "CMakeLists.txt"
     s = cmake.read_text()
     s = replace_required(s, "    platform/switch_debug.c",
-                         "    platform/switch_debug.c\\n    platform/companion_compat.c",
+                         "    platform/switch_debug.c\n    platform/companion_compat.c",
                          "Companion compatibility link source")
     s = replace_required(s, "set(EB_ENABLE_AUDIO ON CACHE BOOL",
                          'set(EB_RUNTIME_ASSETS ON CACHE BOOL "Companion runtime asset packs" FORCE)\nset(EB_ENABLE_AUDIO ON CACHE BOOL',
@@ -157,6 +157,29 @@ def main():
     s = replace_required(s, '"/switch/earthbound-switch"', '"/switch/earthbound-companion"', "Switch main")
     s = s.replace("EarthBound Switch boot diagnostics", "EarthBound Companion Switch boot diagnostics")
     s = s.replace('"/switch/earthbound-switch/', '"/switch/earthbound-companion/')
+    # Companion is a runtime-pak engine. Initialize the verified asset table
+    # before game_init(); the old vanilla frontend never needed this step.
+    s = replace_required(s, '#include "game_main.h"',
+                         '#include "game_main.h"\\n#include "data/runtime_assets.h"',
+                         "Companion asset loader header")
+    s = replace_required(s, '    trace("Initializing SDL subsystems");',
+                         '''    trace("Loading Companion runtime assets");
+    EbAssetLoadResult pak_status = eb_runtime_assets_load(
+        "/switch/earthbound-companion/assets.pak");
+    if (pak_status != EB_ASSETS_OK) {
+        trace("ERROR assets.pak load status: %d", (int)pak_status);
+        fprintf(stderr, "Companion assets.pak missing or invalid: %d\\n",
+                (int)pak_status);
+        exit_code = EXIT_FAILURE;
+        goto shutdown;
+    }
+    trace("Companion assets.pak validated and loaded");
+
+    trace("Initializing SDL subsystems");''',
+                         "Companion pre-game asset load")
+    s = replace_required(s, '    if (sdl_started) SDL_Quit();',
+                         '    if (sdl_started) SDL_Quit();\\n    if (eb_runtime_assets_ready()) eb_runtime_assets_unload();',
+                         "Companion asset shutdown")
     main_file.write_text(s)
 
     for name in ("platform/switch_sdl2_video.c", "platform/switch_sdl2_input.c"):
