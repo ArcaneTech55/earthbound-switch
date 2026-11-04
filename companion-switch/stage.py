@@ -185,7 +185,7 @@ def main():
     s = s.replace('"/switch/earthbound-companion', '"sdmc:/switch/earthbound-companion')
     s = s.replace('"/switch"', '"sdmc:/switch"')
     s = replace_required(s, '    int exit_code = EXIT_SUCCESS;',
-                         '    int exit_code = EXIT_SUCCESS;\\n    const char *startup_error = NULL;',
+                         '    int exit_code = EXIT_SUCCESS;\n    const char *startup_error = NULL;',
                          "boot error state")
     s = replace_required(s, '    startup_log = fopen("sdmc:/switch/earthbound-companion/startup.log", "w");',
                          '''    startup_log = fopen("sdmc:/switch/earthbound-companion/startup.log", "w");
@@ -204,7 +204,7 @@ def main():
         ('trace("ERROR timer initialization");', 'Timer initialization failed'),
         ('trace("ERROR audio initialization: %s", SDL_GetError());', 'Audio initialization failed'),
     ):
-        s = replace_required(s, marker, marker + '\\n        startup_error = "' + message + '";',
+        s = replace_required(s, marker, marker + '\n        startup_error = "' + message + '";',
                              "startup failure: " + message)
     s = replace_required(s, '    if (startup_log) { fclose(startup_log); startup_log = NULL; }',
                          '''    if (startup_log) { fclose(startup_log); startup_log = NULL; }
