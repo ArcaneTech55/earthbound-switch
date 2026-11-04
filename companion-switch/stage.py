@@ -138,12 +138,12 @@ def main():
     # earthbound_game. Without this definition it silently compiles NO-OP stubs.
     s = replace_required(
         s, 'target_compile_definitions(earthbound_switch PRIVATE __SWITCH__=1)',
-        'target_compile_definitions(earthbound_switch PRIVATE __SWITCH__=1 EB_ENABLE_AUDIO=1)\\n'
+        'target_compile_definitions(earthbound_switch PRIVATE __SWITCH__=1 EB_ENABLE_AUDIO=1)\n'
         'target_compile_definitions(earthbound_game PRIVATE EB_HAVE_SETTINGS_BACKEND=1)',
         "Switch audio and settings compile flags")
     s = replace_required(
         s, '    platform/companion_compat.c',
-        '    platform/companion_compat.c\\n    platform/companion_settings.c',
+        '    platform/companion_compat.c\n    platform/companion_settings.c',
         "Companion settings backend source")
     s = replace_required(s, "set(EB_ENABLE_AUDIO ON CACHE BOOL",
                          'set(EB_RUNTIME_ASSETS ON CACHE BOOL "Companion runtime asset packs" FORCE)\nset(EB_ENABLE_AUDIO ON CACHE BOOL',
@@ -175,10 +175,10 @@ def main():
     # before game_init(); the old vanilla frontend never needed this step.
     # Settings were never loaded by the standalone Switch entrypoint.
     s = replace_required(s, '#include "platform/platform.h"',
-                         '#include "platform/platform.h"\\n#include "game/settings.h"',
+                         '#include "platform/platform.h"\n#include "game/settings.h"',
                          "Companion settings header")
     s = replace_required(s, '    trace("Initializing timer");',
-                         '    settings_load();\\n    trace("Companion settings loaded");\\n    trace("Initializing timer");',
+                         '    settings_load();\n    trace("Companion settings loaded");\n    trace("Initializing timer");',
                          "Companion settings initialization")
     s = replace_required(s, '#include "game_main.h"',
                          '#include "game_main.h"\n#include "data/runtime_assets.h"',
@@ -189,7 +189,7 @@ def main():
         "/switch/earthbound-companion/assets.pak");
     if (pak_status != EB_ASSETS_OK) {
         trace("ERROR assets.pak load status: %d", (int)pak_status);
-        fprintf(stderr, "Companion assets.pak missing or invalid: %d\\n",
+        fprintf(stderr, "Companion assets.pak missing or invalid: %d\n",
                 (int)pak_status);
         exit_code = EXIT_FAILURE;
         goto shutdown;
@@ -220,14 +220,14 @@ def main():
                          '''        perror("Cannot select sdmc filesystem");
         startup_error = "Cannot select SD filesystem";''',
                          "SD working directory failure")
-    s = replace_required(s, '        fprintf(stderr, "Cannot create EarthBound save directory\\n");',
-                         '''        fprintf(stderr, "Cannot create EarthBound save directory\\\\n");
+    s = replace_required(s, '        fprintf(stderr, "Cannot create EarthBound save directory\n");',
+                         '''        fprintf(stderr, "Cannot create EarthBound save directory\\\n");
         startup_error = "Cannot create Companion SD folder";''',
                          "SD folder creation failure")
     s = replace_required(s, '    startup_log = fopen("sdmc:/switch/earthbound-companion/startup.log", "w");',
                          '''    startup_log = fopen("sdmc:/switch/earthbound-companion/startup.log", "w");
     if (!startup_log)
-        fprintf(stderr, "Cannot create Companion startup.log (errno=%d)\\n", errno);''',
+        fprintf(stderr, "Cannot create Companion startup.log (errno=%d)\n", errno);''',
                          "SD diagnostics")
     s = replace_required(s, '        trace("ERROR assets.pak load status: %d", (int)pak_status);',
                          '''        trace("ERROR assets.pak load status: %d", (int)pak_status);
@@ -249,12 +249,12 @@ def main():
         /* Console feedback is a fallback when hbmenu suppresses stderr.
          * SDL is already shut down so we don't compete for the display. */
         consoleInit(NULL);
-        printf("EarthBound Companion Switch\\n\\n");
-        printf("STARTUP FAILED\\n");
-        printf("%s\\n", startup_error ? startup_error : "Unknown boot error");
-        printf("\\nCheck /switch/earthbound-companion/startup.log\\n");
-        printf("Make sure assets.pak is in the same SD folder.\\n");
-        printf("\\nReturning to Homebrew in 12 seconds.\\n");
+        printf("EarthBound Companion Switch\n\n");
+        printf("STARTUP FAILED\n");
+        printf("%s\n", startup_error ? startup_error : "Unknown boot error");
+        printf("\nCheck /switch/earthbound-companion/startup.log\n");
+        printf("Make sure assets.pak is in the same SD folder.\n");
+        printf("\nReturning to Homebrew in 12 seconds.\n");
         consoleUpdate(NULL);
         for (int i = 0; i < 120 && appletMainLoop(); ++i)
             svcSleepThread(100000000ULL);
