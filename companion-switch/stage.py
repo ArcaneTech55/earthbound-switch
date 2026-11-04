@@ -175,6 +175,8 @@ def main():
 
     shutil.copy2(ROOT / "companion-switch" / "msu_audio_switch.c",
                  dst / "platform" / "companion_msu_audio.c")
+    shutil.copy2(ROOT / "companion-switch" / "companion_hub.c",
+                 dst / "platform" / "companion_hub.c")
 
     # Companion's engine needs dynamic, versioned asset packs. Do NOT embed
     # the vanilla binary tables from the already-compiled EarthBound port.
@@ -197,6 +199,9 @@ def main():
     s = replace_required(s, "    platform/companion_settings.c",
                          "    platform/companion_settings.c\n    platform/companion_msu_audio.c",
                          "MSU Switch PCM source")
+    s = replace_required(s, "    platform/companion_msu_audio.c",
+                         "    platform/companion_msu_audio.c\n    platform/companion_hub.c",
+                         "Companion Hub SDL source")
     s = replace_required(
         s, "    ../unix/platform/sdl2_save.c",
         "    platform/companion_save.c",
@@ -457,6 +462,14 @@ static pixel_t smooth_frame[EB_VIEWPORT_WIDTH*2*EB_VIEWPORT_HEIGHT*2];''',
         video_text, '    if(SDL_UpdateTexture(frame_texture,NULL,frame,stride_bytes)!=0)return;',
         '''    if(SDL_UpdateTexture(frame_texture,NULL,frame,stride_bytes)!=0)return;''',
         "Switch existing texture upload")
+    video_text = replace_required(
+        video_text, '#include "game/settings.h"',
+        '#include "game/settings.h"\nvoid companion_hub_draw(SDL_Renderer*,int,int);',
+        "Companion Hub render declaration")
+    video_text = replace_required(
+        video_text, '    SDL_RenderPresent(renderer);',
+        '    companion_hub_draw(renderer,width,height);\n    SDL_RenderPresent(renderer);',
+        "Companion Hub presentation")
     video.write_text(video_text)
 
     # In-game Alternate Controls must change Nintendo face-button mappings.
@@ -479,6 +492,41 @@ static pixel_t smooth_frame[EB_VIEWPORT_WIDTH*2*EB_VIEWPORT_HEIGHT*2];''',
     }
     uint16_t next = eb_switch_map_pad(buttons);''',
         "Switch alternate button mapping")
+    # Replace the old invisible debug/cheat menu with useful QoL toggles.
+    input_text = replace_required(
+        input_text, '#include "game/settings.h"',
+        '#include "game/settings.h"\n#include "game_main.h"',
+        "Companion Hub input declarations")
+    input_text = replace_required(
+        input_text, 'static bool menu_combo_latched = false;',
+        'bool eb_switch_menu_fast_forward = false;\nstatic bool fast_forward_aux_pulse = false;\nstatic bool menu_combo_latched = false;',
+        "Companion Hub fast-forward state")
+    old_action_start = input_text.index('static void menu_action(void) {')
+    old_action_end = input_text.index('\nbool platform_headless=',old_action_start)
+    input_text = input_text[:old_action_start] + '''static void menu_action(void) {
+    switch (eb_switch_menu_selected) {
+        case 0: eb_switch_menu_open = false; break;
+        case 1: engine_fx_antialiasing = !engine_fx_antialiasing; break;
+        case 2: engine_fx_scanlines = !engine_fx_scanlines; break;
+        case 3: eb_switch_menu_instant_text = !eb_switch_menu_instant_text; break;
+        case 4:
+            eb_switch_menu_fast_forward = !eb_switch_menu_fast_forward;
+            fast_forward_aux_pulse = true;
+            break;
+        case 5: eb_switch_menu_open = false; break;
+    }
+}
+''' + input_text[old_action_end:]
+    input_text = replace_required(
+        input_text, 'uint16_t platform_input_get_aux(void) { return 0; }',
+        '''uint16_t platform_input_get_aux(void) {
+    if (fast_forward_aux_pulse) {
+        fast_forward_aux_pulse = false;
+        return AUX_FAST_FORWARD;
+    }
+    return 0;
+}''',
+        "Companion Hub fast-forward auxiliary button")
     input_file.write_text(input_text)
 
     # Wire the vanilla settings overlay's scale callback to the actual
