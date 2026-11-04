@@ -14,6 +14,7 @@
 #define STATE_DIR "sdmc:/switch/earthbound-companion/states"
 #define MAX_SNAPSHOT_BYTES (2u * 1024u * 1024u)
 
+extern void state_dump_forget_known(void);
 static FILE *writers[2];
 static int current_group;     /* 0=manual slots, 1=rewind ring */
 static int current_number;
@@ -22,6 +23,7 @@ void companion_state_channel(int group, int number) {
     if (group < 0 || group > 1 || number < 0 || number >= 16) return;
     /* Call only at root-loop boundary: no active writer may be switched. */
     if (writers[0] || writers[1]) return;
+    if(current_group!=group || current_number!=number) state_dump_forget_known();
     current_group=group;
     current_number=number;
 }
