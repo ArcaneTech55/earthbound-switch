@@ -375,7 +375,7 @@ void platform_audio_msu_unload(void);''',
     video_text = video.read_text()
     video_text = replace_required(
         video_text, '#include "platform/platform.h"',
-        '#include "platform/platform.h"\\n#include "game/settings.h"',
+        '#include "platform/platform.h"\n#include "game/settings.h"',
         "Switch video settings header")
     video_text = replace_required(
         video_text, 'static pixel_t frame[EB_VIEWPORT_WIDTH*EB_VIEWPORT_HEIGHT];',
