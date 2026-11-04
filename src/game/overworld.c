@@ -1073,7 +1073,14 @@ static void destroy_mini_ghost_entity(void) {
  * Checks conditions for the "Your Dad called" phone interaction.
  * Only triggers when: no windows open, not in battle, no swirl,
  * no enemy touched, not already queued, and flag not disabled. */
+#ifdef __SWITCH__
+extern bool eb_switch_menu_no_dad;
+extern bool eb_switch_menu_no_homesick;
+#endif
 static void load_dad_phone(void) {
+#ifdef __SWITCH__
+    if (eb_switch_menu_no_dad) return;
+#endif
     /* Assembly lines 7-17: Guard checks */
     if (any_window_open())
         return;
@@ -2434,6 +2441,12 @@ uint16_t calculate_movement_path_steps(int16_t src_x, int16_t src_y,
 static const uint8_t homesickness_probability[] = { 0, 100, 150, 200, 250, 0 };
 
 uint16_t attempt_homesickness(bool *needs_render) {
+#ifdef __SWITCH__
+    if (eb_switch_menu_no_homesick) {
+        if (needs_render) *needs_render = false;
+        return 0;
+    }
+#endif
     *needs_render = false;
     /* Assembly line 8-11: check if Ness is alive */
     uint8_t status = party_characters[0].afflictions[0];  /* STATUS_GROUP::PERSISTENT_EASYHEAL */
