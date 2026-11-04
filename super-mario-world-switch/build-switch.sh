@@ -68,7 +68,7 @@ for key,value in (
     ("LinearFiltering","0"),
 ):
     import re
-    rx=re.compile(r"(?m)^\\s*#?\\s*"+re.escape(key)+r"\\s*=.*$")
+    rx=re.compile(r"(?m)^\s*#?\s*"+re.escape(key)+r"\s*=.*$")
     if rx.search(a): a=rx.sub(f"{key} = {value}",a,count=1)
     else: a+=f"\n{key} = {value}"
 s=s[:section]+a+s[stop:]
