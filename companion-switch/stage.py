@@ -63,8 +63,8 @@ def main():
     runtime = STAGE / "src" / "data" / "runtime_assets.c"
     runtime_c = runtime.read_text()
     runtime_c = replace_required(
-        runtime_c, "#ifdef _WIN32\\n#include <windows.h>",
-        "#if defined(__SWITCH__)\\n/* Read assets.pak into owned heap memory on libnx. */\\n#elif defined(_WIN32)\\n#include <windows.h>",
+        runtime_c, "#ifdef _WIN32\n#include <windows.h>",
+        "#if defined(__SWITCH__)\n/* Read assets.pak into owned heap memory on libnx. */\n#elif defined(_WIN32)\n#include <windows.h>",
         "runtime asset platform includes"
     )
     runtime_c = replace_required(
@@ -75,12 +75,12 @@ def main():
     )
     runtime_c = replace_required(
         runtime_c,
-        '#if defined(_WIN32)\\n    const char *appdata',
-        '#if defined(__SWITCH__)\\n    int n = snprintf(buf, buf_size, "/switch/earthbound-companion/assets.pak");\\n    return n > 0 && (size_t)n < buf_size;\\n#elif defined(_WIN32)\\n    const char *appdata',
+        '#if defined(_WIN32)\n    const char *appdata',
+        '#if defined(__SWITCH__)\n    int n = snprintf(buf, buf_size, "/switch/earthbound-companion/assets.pak");\n    return n > 0 && (size_t)n < buf_size;\n#elif defined(_WIN32)\n    const char *appdata',
         "default asset pack location"
     )
     runtime_c = replace_required(
-        runtime_c, 'static void *map_pak_file(const char *path, size_t *out_size) {\\n#ifdef _WIN32',
+        runtime_c, 'static void *map_pak_file(const char *path, size_t *out_size) {\n#ifdef _WIN32',
         '''static void *map_pak_file(const char *path, size_t *out_size) {
 #ifdef __SWITCH__
     FILE *file = fopen(path, "rb");
@@ -106,7 +106,7 @@ def main():
         "runtime pack mapping backend"
     )
     runtime_c = replace_required(
-        runtime_c, 'static void unmap_pak_file(void *ptr, size_t size) {\\n#ifdef _WIN32',
+        runtime_c, 'static void unmap_pak_file(void *ptr, size_t size) {\n#ifdef _WIN32',
         '''static void unmap_pak_file(void *ptr, size_t size) {
 #ifdef __SWITCH__
     (void)size;
