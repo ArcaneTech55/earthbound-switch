@@ -202,7 +202,7 @@ def main():
         "/switch/earthbound-companion/assets.pak");
     if (pak_status != EB_ASSETS_OK) {
         trace("ERROR assets.pak load status: %d", (int)pak_status);
-        fprintf(stderr, "Companion assets.pak missing or invalid: %d\n",
+        fprintf(stderr, "Companion assets.pak missing or invalid: %d\\n",
                 (int)pak_status);
         exit_code = EXIT_FAILURE;
         goto shutdown;
@@ -240,7 +240,7 @@ def main():
     s = replace_required(s, '    startup_log = fopen("sdmc:/switch/earthbound-companion/startup.log", "w");',
                          '''    startup_log = fopen("sdmc:/switch/earthbound-companion/startup.log", "w");
     if (!startup_log)
-        fprintf(stderr, "Cannot create Companion startup.log (errno=%d)\n", errno);''',
+        fprintf(stderr, "Cannot create Companion startup.log (errno=%d)\\n", errno);''',
                          "SD diagnostics")
     s = replace_required(s, '        trace("ERROR assets.pak load status: %d", (int)pak_status);',
                          '''        trace("ERROR assets.pak load status: %d", (int)pak_status);
@@ -262,12 +262,12 @@ def main():
         /* Console feedback is a fallback when hbmenu suppresses stderr.
          * SDL is already shut down so we don't compete for the display. */
         consoleInit(NULL);
-        printf("EarthBound Companion Switch\n\n");
-        printf("STARTUP FAILED\n");
-        printf("%s\n", startup_error ? startup_error : "Unknown boot error");
-        printf("\nCheck /switch/earthbound-companion/startup.log\n");
-        printf("Make sure assets.pak is in the same SD folder.\n");
-        printf("\nReturning to Homebrew in 12 seconds.\n");
+        printf("EarthBound Companion Switch\\n\\n");
+        printf("STARTUP FAILED\\n");
+        printf("%s\\n", startup_error ? startup_error : "Unknown boot error");
+        printf("\\nCheck /switch/earthbound-companion/startup.log\\n");
+        printf("Make sure assets.pak is in the same SD folder.\\n");
+        printf("\\nReturning to Homebrew in 12 seconds.\\n");
         consoleUpdate(NULL);
         for (int i = 0; i < 120 && appletMainLoop(); ++i)
             svcSleepThread(100000000ULL);
