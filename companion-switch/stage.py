@@ -124,6 +124,9 @@ def main():
     shutil.copy2(ROOT / "companion-switch" / "platform_compat.c",
                  dst / "platform" / "companion_compat.c")
 
+    shutil.copy2(ROOT / "companion-switch" / "settings_backend.c",
+                 dst / "platform" / "companion_settings.c")
+
     # Companion's engine needs dynamic, versioned asset packs. Do NOT embed
     # the vanilla binary tables from the already-compiled EarthBound port.
     cmake = dst / "CMakeLists.txt"
@@ -131,6 +134,17 @@ def main():
     s = replace_required(s, "    platform/switch_debug.c",
                          "    platform/switch_debug.c\n    platform/companion_compat.c",
                          "Companion compatibility link source")
+    # Companion's desktop audio source is compiled into the frontend, not
+    # earthbound_game. Without this definition it silently compiles NO-OP stubs.
+    s = replace_required(
+        s, 'target_compile_definitions(earthbound_switch PRIVATE __SWITCH__=1)',
+        'target_compile_definitions(earthbound_switch PRIVATE __SWITCH__=1 EB_ENABLE_AUDIO=1)\\n'
+        'target_compile_definitions(earthbound_game PRIVATE EB_HAVE_SETTINGS_BACKEND=1)',
+        "Switch audio and settings compile flags")
+    s = replace_required(
+        s, '    platform/companion_compat.c',
+        '    platform/companion_compat.c\\n    platform/companion_settings.c',
+        "Companion settings backend source")
     s = replace_required(s, "set(EB_ENABLE_AUDIO ON CACHE BOOL",
                          'set(EB_RUNTIME_ASSETS ON CACHE BOOL "Companion runtime asset packs" FORCE)\nset(EB_ENABLE_AUDIO ON CACHE BOOL',
                          "Switch CMake setup")
@@ -159,6 +173,13 @@ def main():
     s = s.replace('"/switch/earthbound-switch/', '"/switch/earthbound-companion/')
     # Companion is a runtime-pak engine. Initialize the verified asset table
     # before game_init(); the old vanilla frontend never needed this step.
+    # Settings were never loaded by the standalone Switch entrypoint.
+    s = replace_required(s, '#include "platform/platform.h"',
+                         '#include "platform/platform.h"\\n#include "game/settings.h"',
+                         "Companion settings header")
+    s = replace_required(s, '    trace("Initializing timer");',
+                         '    settings_load();\\n    trace("Companion settings loaded");\\n    trace("Initializing timer");',
+                         "Companion settings initialization")
     s = replace_required(s, '#include "game_main.h"',
                          '#include "game_main.h"\n#include "data/runtime_assets.h"',
                          "Companion asset loader header")
