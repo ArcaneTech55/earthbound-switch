@@ -331,14 +331,14 @@ def main():
     s = replace_required(s, '#include "game/settings.h"',
                          '#include "game/settings.h"\n#include "game/eb_achievements.h"',
                          "Switch achievements header")
-    s = replace_required(s, '    trace("Entering game_init");',
-                         '''    if (eb_achievements_init(
+    s = replace_required(s, '    trace("game_init returned");',
+                         '''    trace("game_init returned");
+    if (eb_achievements_init(
             "sdmc:/switch/earthbound-companion/achievements", false)) {
         trace("Achievements initialized and profile is writable");
     } else {
         trace("WARNING achievement profile initialization failed");
-    }
-    trace("Entering game_init");''',
+    }''',
                          "Switch achievement initialization")
     # Autodetect an MSU-1 music pack on the SD card before game starts.
     s = replace_required(s, '#include <string.h>',
