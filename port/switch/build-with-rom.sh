@@ -31,9 +31,9 @@ docker run --rm \
       -DCMAKE_BUILD_TYPE=Release \
       -DEB_SWITCH_TRUE_WIDESCREEN=ON
     cmake --build port/switch/build -j 4
-    test -s port/switch/build/earthbound_switch.nro
-    echo "Built: /src/port/switch/build/earthbound_switch.nro"
+    test -s port/switch/build/EarthboundSwitch.nro
+    echo "Built: /src/port/switch/build/EarthboundSwitch.nro"
   '
 
-echo "Local NRO: $ROOT/port/switch/build/earthbound_switch.nro"
-echo "Copy to sdmc:/switch/earthbound-switch/earthbound_switch.nro"
+echo "Local NRO: $ROOT/port/switch/build/EarthboundSwitch.nro"
+echo "Copy to sdmc:/switch/earthbound-switch/EarthboundSwitch.nro"
