@@ -368,30 +368,73 @@ void platform_audio_msu_unload(void);''',
         file = dst / name
         file.write_text(file.read_text().replace("/switch/earthbound-switch/", "/switch/earthbound-companion/"))
 
-    # Implement basic Companion Config effects using the Switch SDL renderer.
+    # Companion visual settings: keep scanlines subtle and move filtering
+    # to a 2x nearest-upscaled texture before the final bilinear pass.
+    # Direct bilinear on 400x224 blurs every pixel, which looks muddy.
     video = dst / "platform" / "switch_sdl2_video.c"
     video_text = video.read_text()
     video_text = replace_required(
         video_text, '#include "platform/platform.h"',
-        '#include "platform/platform.h"\n#include "game/settings.h"',
+        '#include "platform/platform.h"\\n#include "game/settings.h"',
         "Switch video settings header")
+    video_text = replace_required(
+        video_text, 'static pixel_t frame[EB_VIEWPORT_WIDTH*EB_VIEWPORT_HEIGHT];',
+        '''static pixel_t frame[EB_VIEWPORT_WIDTH*EB_VIEWPORT_HEIGHT];
+/* Optional pre-scaled frame: nearest 2x followed by output bilinear gives
+ * softened sub-pixel edges without full-frame low-resolution blur. */
+static SDL_Texture *smooth_texture;
+static pixel_t smooth_frame[EB_VIEWPORT_WIDTH*2*EB_VIEWPORT_HEIGHT*2];''',
+        "Switch filter buffers")
+    video_text = replace_required(
+        video_text, '    return frame_texture!=NULL;',
+        '''    if (!frame_texture) return false;
+    smooth_texture=SDL_CreateTexture(renderer,SDL_PIXELFORMAT_BGR565,
+        SDL_TEXTUREACCESS_STREAMING,EB_VIEWPORT_WIDTH*2,EB_VIEWPORT_HEIGHT*2);
+    if (smooth_texture)
+        SDL_SetTextureScaleMode(smooth_texture,SDL_ScaleModeLinear);
+    SDL_SetTextureScaleMode(frame_texture,SDL_ScaleModeNearest);
+    /* The sharp renderer always works even if optional texture creation fails. */
+    return true;''',
+        "Switch smooth texture init")
+    video_text = replace_required(
+        video_text, 'void platform_video_shutdown(void) {',
+        '''void platform_video_shutdown(void) {
+    if(smooth_texture){SDL_DestroyTexture(smooth_texture);smooth_texture=NULL;}''',
+        "Switch smooth texture cleanup")
     video_text = replace_required(
         video_text, '    eb_switch_scene_art_frame(frame,EB_VIEWPORT_WIDTH,EB_VIEWPORT_HEIGHT);',
         '''    eb_switch_scene_art_frame(frame,EB_VIEWPORT_WIDTH,EB_VIEWPORT_HEIGHT);
+    /* 6% dimming instead of the former 25%; keep text and bright scenes
+     * readable. The effect is opt-in through Companion Config. */
     if (engine_fx_scanlines) {
         for (int y = 1; y < EB_VIEWPORT_HEIGHT; y += 2) {
             for (int x = 0; x < EB_VIEWPORT_WIDTH; ++x) {
                 pixel_t *px = &frame[(size_t)y * EB_VIEWPORT_WIDTH + x];
                 unsigned rgb = pixel_to_rgb888(*px);
-                *px = PIXEL_RGB(((rgb >> 16) & 255u) * 3u / 4u,
-                                ((rgb >> 8) & 255u) * 3u / 4u,
-                                (rgb & 255u) * 3u / 4u);
+                *px = PIXEL_RGB(((rgb >> 16) & 255u) * 15u / 16u,
+                                ((rgb >> 8) & 255u) * 15u / 16u,
+                                (rgb & 255u) * 15u / 16u);
             }
         }
     }
-    SDL_SetTextureScaleMode(frame_texture,
-        engine_fx_antialiasing ? SDL_ScaleModeLinear : SDL_ScaleModeNearest);''',
-        "Switch Config scanlines and filter")
+    /* Build the smooth texture from exact 2x nearest neighbor pixels.
+     * No blending happens in the game framebuffer or the SNES PPU. */
+    bool use_smooth=engine_fx_antialiasing && smooth_texture;
+    if (use_smooth) {
+        const int wide=EB_VIEWPORT_WIDTH*2;
+        for(int y=0;y<EB_VIEWPORT_HEIGHT;y++) {
+            const pixel_t *in=frame+(size_t)y*EB_VIEWPORT_WIDTH;
+            pixel_t *out0=smooth_frame+(size_t)(y*2)*wide;
+            pixel_t *out1=out0+wide;
+            for(int x=0;x<EB_VIEWPORT_WIDTH;x++) {
+                pixel_t v=in[x];
+                out0[x*2]=out0[x*2+1]=v;
+                out1[x*2]=out1[x*2+1]=v;
+            }
+        }
+        SDL_UpdateTexture(smooth_texture,NULL,smooth_frame,wide*(int)sizeof(pixel_t));
+    }''',
+        "Switch scanline strength and smooth pre-scale")
     video_text = replace_required(
         video_text, '    SDL_RenderCopy(renderer,frame_texture,NULL,&dst);',
         '''    SDL_Rect src_rect = {0, 0, EB_VIEWPORT_WIDTH, EB_VIEWPORT_HEIGHT};
@@ -404,8 +447,16 @@ void platform_audio_msu_unload(void);''',
             (EbWsSize){width,height},scale_mode);
         dst = (SDL_Rect){fitted.x,fitted.y,fitted.width,fitted.height};
     }
-    SDL_RenderCopy(renderer,frame_texture,&src_rect,&dst);''',
-        "Switch Config 4:3 aspect ratio")
+    SDL_Texture *chosen=use_smooth?smooth_texture:frame_texture;
+    if(use_smooth) {
+        src_rect.x*=2; src_rect.y*=2; src_rect.w*=2; src_rect.h*=2;
+    }
+    SDL_RenderCopy(renderer,chosen,&src_rect,&dst);''',
+        "Switch Config aspect and scaled output")
+    video_text = replace_required(
+        video_text, '    if(SDL_UpdateTexture(frame_texture,NULL,frame,stride_bytes)!=0)return;',
+        '''    if(SDL_UpdateTexture(frame_texture,NULL,frame,stride_bytes)!=0)return;''',
+        "Switch existing texture upload")
     video.write_text(video_text)
 
     # In-game Alternate Controls must change Nintendo face-button mappings.
@@ -441,9 +492,10 @@ void eb_switch_video_set_scale(int mode) {
     scale_mode = (EbScaleMode)mode;
     SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY,
                 mode == EB_SCALE_ASPECT_LINEAR ? "linear" : "nearest");
-    if (frame_texture)
-        SDL_SetTextureScaleMode(frame_texture,
-            mode == EB_SCALE_ASPECT_LINEAR ? SDL_ScaleModeLinear : SDL_ScaleModeNearest);
+    /* Scaling mode chooses layout, not softness. Pixel filtering is
+     * controlled solely by the Companion anti-aliasing setting. */
+    if (frame_texture) SDL_SetTextureScaleMode(frame_texture,SDL_ScaleModeNearest);
+    if (smooth_texture) SDL_SetTextureScaleMode(smooth_texture,SDL_ScaleModeLinear);
 }
 """
     video.write_text(video_code)
