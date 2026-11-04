@@ -508,7 +508,7 @@ static pixel_t smooth_frame[EB_VIEWPORT_WIDTH*2*EB_VIEWPORT_HEIGHT*2];''',
         case 0: eb_switch_menu_open = false; break;
         case 1: engine_fx_antialiasing = !engine_fx_antialiasing; break;
         case 2: engine_fx_scanlines = !engine_fx_scanlines; break;
-        case 3: eb_switch_menu_instant_text = !eb_switch_menu_instant_text; break;
+        case 3:\n            eb_switch_menu_scale = (eb_switch_menu_scale + 1) % 3;\n            eb_switch_video_set_scale(eb_switch_menu_scale);\n            break;
         case 4:
             eb_switch_menu_fast_forward = !eb_switch_menu_fast_forward;
             fast_forward_aux_pulse = true;
