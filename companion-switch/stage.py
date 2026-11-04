@@ -158,7 +158,7 @@ def main():
     state_code = state_dump.read_text()
     state_code = replace_required(
         state_code, "static void known_set(",
-        "void state_dump_forget_known(void) { s_known.valid = false; }\\n\\nstatic void known_set(",
+        "void state_dump_forget_known(void) { s_known.valid = false; }\n\nstatic void known_set(",
         "Switch savestate channel cache reset")
     state_dump.write_text(state_code)
 
