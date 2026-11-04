@@ -58,6 +58,64 @@ def main():
             fixed.append(source_file.relative_to(STAGE).as_posix())
     print(f"Staged {len(fixed)} missing stdio includes:", ", ".join(fixed))
 
+    # libnx does not have POSIX mmap. Use a bounded malloc/read/free backend
+    # specifically for Switch, preserving the existing validated pak parser.
+    runtime = STAGE / "src" / "data" / "runtime_assets.c"
+    runtime_c = runtime.read_text()
+    runtime_c = replace_required(
+        runtime_c, "#ifdef _WIN32\\n#include <windows.h>",
+        "#if defined(__SWITCH__)\\n/* Read assets.pak into owned heap memory on libnx. */\\n#elif defined(_WIN32)\\n#include <windows.h>",
+        "runtime asset platform includes"
+    )
+    runtime_c = replace_required(
+        runtime_c,
+        '    char fallback[PATH_MAX];',
+        '    char fallback[PATH_MAX];',
+        "default asset path"  # guarded below with Switch-specific path
+    )
+    runtime_c = replace_required(
+        runtime_c,
+        '#if defined(_WIN32)\\n    const char *appdata',
+        '#if defined(__SWITCH__)\\n    int n = snprintf(buf, buf_size, "/switch/earthbound-companion/assets.pak");\\n    return n > 0 && (size_t)n < buf_size;\\n#elif defined(_WIN32)\\n    const char *appdata',
+        "default asset pack location"
+    )
+    runtime_c = replace_required(
+        runtime_c, 'static void *map_pak_file(const char *path, size_t *out_size) {\\n#ifdef _WIN32',
+        '''static void *map_pak_file(const char *path, size_t *out_size) {
+#ifdef __SWITCH__
+    FILE *file = fopen(path, "rb");
+    if (!file) return NULL;
+    if (fseek(file, 0, SEEK_END) != 0) { fclose(file); return NULL; }
+    long length = ftell(file);
+    if (length <= 0 || length > 256L * 1024L * 1024L ||
+        fseek(file, 0, SEEK_SET) != 0) {
+        fclose(file);
+        return NULL;
+    }
+    void *data = malloc((size_t)length);
+    if (!data) { fclose(file); return NULL; }
+    size_t got = fread(data, 1, (size_t)length, file);
+    int close_rc = fclose(file);
+    if (got != (size_t)length || close_rc != 0) {
+        free(data);
+        return NULL;
+    }
+    *out_size = (size_t)length;
+    return data;
+#elif defined(_WIN32)''',
+        "runtime pack mapping backend"
+    )
+    runtime_c = replace_required(
+        runtime_c, 'static void unmap_pak_file(void *ptr, size_t size) {\\n#ifdef _WIN32',
+        '''static void unmap_pak_file(void *ptr, size_t size) {
+#ifdef __SWITCH__
+    (void)size;
+    free(ptr);
+#elif defined(_WIN32)''',
+        "runtime pack unmapping backend"
+    )
+    runtime.write_text(runtime_c)
+
     dst = STAGE / "port" / "switch"
     shutil.copytree(PORT, dst, ignore=shutil.ignore_patterns("build", ".DS_Store"), dirs_exist_ok=True)
 
