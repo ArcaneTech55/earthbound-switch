@@ -150,6 +150,9 @@ def main():
     shutil.copy2(ROOT / "companion-switch" / "settings_backend.c",
                  dst / "platform" / "companion_settings.c")
 
+    shutil.copy2(ROOT / "companion-switch" / "switch_save.c",
+                 dst / "platform" / "companion_save.c")
+
     shutil.copy2(ROOT / "companion-switch" / "msu_audio_switch.c",
                  dst / "platform" / "companion_msu_audio.c")
 
@@ -174,6 +177,10 @@ def main():
     s = replace_required(s, "    platform/companion_settings.c",
                          "    platform/companion_settings.c\n    platform/companion_msu_audio.c",
                          "MSU Switch PCM source")
+    s = replace_required(
+        s, "    ../unix/platform/sdl2_save.c",
+        "    platform/companion_save.c",
+        "Switch SRAM save backend")
     s = replace_required(s, "set(EB_ENABLE_AUDIO ON CACHE BOOL",
                          'set(EB_RUNTIME_ASSETS ON CACHE BOOL "Companion runtime asset packs" FORCE)\nset(EB_ENABLE_AUDIO ON CACHE BOOL',
                          "Switch CMake setup")
@@ -297,6 +304,8 @@ def main():
         consoleExit(NULL);
     }''',
                          "screen error presentation")
+    # Save initialization now probes for actual SD write access; give a
+    # meaningful diagnostic before running any gameplay.
     # Activate achievements for real gameplay; the desktop main used to
     # do this, but the standalone Switch main never did.
     s = replace_required(s, '#include "game/settings.h"',
