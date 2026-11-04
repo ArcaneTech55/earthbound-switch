@@ -187,6 +187,22 @@ def main():
     s = replace_required(s, '    int exit_code = EXIT_SUCCESS;',
                          '    int exit_code = EXIT_SUCCESS;\n    const char *startup_error = NULL;',
                          "boot error state")
+    s = replace_required(s,
+                         '        return EXIT_FAILURE;\\n    }\\n    sd_mounted = true;',
+                         '''        startup_error = "Cannot mount the SD card";
+        exit_code = EXIT_FAILURE;
+        goto shutdown;
+    }
+    sd_mounted = true;''',
+                         "early SD mount failure")
+    s = replace_required(s, '        perror("Cannot select sdmc filesystem");',
+                         '''        perror("Cannot select sdmc filesystem");
+        startup_error = "Cannot select SD filesystem";''',
+                         "SD working directory failure")
+    s = replace_required(s, '        fprintf(stderr, "Cannot create EarthBound save directory\\\\n");',
+                         '''        fprintf(stderr, "Cannot create EarthBound save directory\\\\n");
+        startup_error = "Cannot create Companion SD folder";''',
+                         "SD folder creation failure")
     s = replace_required(s, '    startup_log = fopen("sdmc:/switch/earthbound-companion/startup.log", "w");',
                          '''    startup_log = fopen("sdmc:/switch/earthbound-companion/startup.log", "w");
     if (!startup_log)
