@@ -18,6 +18,200 @@ static SDL_Renderer *renderer;
 static SDL_Texture *frame_texture;
 static pixel_t frame[EB_VIEWPORT_WIDTH*EB_VIEWPORT_HEIGHT];
 static bool use_vsync=true;
+
+extern bool eb_switch_menu_open;
+extern int eb_switch_menu_selected;
+extern int eb_switch_menu_scale;
+extern bool eb_switch_menu_fast_text;
+extern bool eb_switch_menu_no_dad;
+extern bool eb_switch_menu_no_homesick;
+extern bool eb_switch_menu_auto_heal;
+
+static void qol_rect(int x,int y,int w,int h, SDL_Color c) {
+    SDL_Rect r={x,y,w,h};
+    SDL_SetRenderDrawColor(renderer,c.r,c.g,c.b,c.a);
+    SDL_RenderFillRect(renderer,&r);
+}
+static const char *qol_glyph(char c) {
+    static const struct {char c;const char *bits;} atlas[]={
+        {'0',"01110100011001110101110011000101110"},
+        {'1',"00100011000010000100001000010001110"},
+        {'2',"01110100010000100010001000100011111"},
+        {'3',"11110000010000101110000010000111110"},
+        {'4',"00010001100101010010111110001000010"},
+        {'5',"11111100001000011110000010000111110"},
+        {'6',"01110100001000011110100011000101110"},
+        {'7',"11111000010001000100010000100001000"},
+        {'8',"01110100011000101110100011000101110"},
+        {'9',"01110100011000101111000010000101110"},
+        {'A',"01110100011000111111100011000110001"},
+        {'B',"11110100011000111110100011000111110"},
+        {'C',"01111100001000010000100001000001111"},
+        {'D',"11110100011000110001100011000111110"},
+        {'E',"11111100001000011110100001000011111"},
+        {'F',"11111100001000011110100001000010000"},
+        {'G',"01111100001000010111100011000101111"},
+        {'H',"10001100011000111111100011000110001"},
+        {'I',"11111001000010000100001000010011111"},
+        {'J',"00111000100001000010100101001001100"},
+        {'K',"10001100101010011000101001001010001"},
+        {'L',"10000100001000010000100001000011111"},
+        {'M',"10001110111010110101100011000110001"},
+        {'N',"10001110011010110011100011000110001"},
+        {'O',"01110100011000110001100011000101110"},
+        {'P',"11110100011000111110100001000010000"},
+        {'Q',"01110100011000110001101011001001101"},
+        {'R',"11110100011000111110101001001010001"},
+        {'S',"01111100001000001110000010000111110"},
+        {'T',"11111001000010000100001000010000100"},
+        {'U',"10001100011000110001100011000101110"},
+        {'V',"10001100011000110001100010101000100"},
+        {'W',"10001100011000110101101011010101010"},
+        {'X',"10001100010101000100010101000110001"},
+        {'Y',"10001100010101000100001000010000100"},
+        {'Z',"11111000010001000100010001000011111"},
+        {' ',"00000000000000000000000000000000000"},
+        {'+',"00000001000010011111001000010000000"},
+        {'
+static EbScaleMode scale_mode=EB_SCALE_ASPECT_NEAREST;
+
+static void read_presentation_settings(void) {
+    FILE *f=fopen("/switch/earthbound-switch/scaling.cfg","r");
+    if(!f)return;
+    char mode[32]={0};
+    if(fgets(mode,sizeof(mode),f)) {
+        mode[strcspn(mode,"\r\n")]=0;
+        scale_mode=eb_scale_mode_parse(mode);
+        eb_switch_menu_scale=scale_mode==EB_SCALE_INTEGER?1:(scale_mode==EB_SCALE_ASPECT_LINEAR?2:0);
+    }
+    fclose(f);
+}
+
+bool platform_video_init(void) {
+    read_presentation_settings();
+    SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY,
+                scale_mode==EB_SCALE_ASPECT_LINEAR?"linear":"nearest");
+    SDL_DisplayMode display={0};
+    int output_width=1280, output_height=720;
+    /* The Switch SDL video backend may advertise a higher resolution when
+     * docked. The game scene remains 400x225 independent of display size. */
+    if(SDL_GetCurrentDisplayMode(0,&display)==0 &&
+       display.w>=640 && display.h>=360 &&
+       display.w<=3840 && display.h<=2160) {
+        output_width=display.w;
+        output_height=display.h;
+    }
+    window=SDL_CreateWindow("EarthBound Switch",SDL_WINDOWPOS_CENTERED,
+        SDL_WINDOWPOS_CENTERED,output_width,output_height,
+        SDL_WINDOW_SHOWN | SDL_WINDOW_FULLSCREEN_DESKTOP);
+    if(!window) return false;
+    renderer=SDL_CreateRenderer(window,-1,SDL_RENDERER_ACCELERATED |
+                                        SDL_RENDERER_PRESENTVSYNC);
+    if(!renderer) renderer=SDL_CreateRenderer(window,-1,SDL_RENDERER_SOFTWARE);
+    if(!renderer)return false;
+    frame_texture=SDL_CreateTexture(renderer,SDL_PIXELFORMAT_BGR565,
+        SDL_TEXTUREACCESS_STREAMING,EB_VIEWPORT_WIDTH,EB_VIEWPORT_HEIGHT);
+    return frame_texture!=NULL;
+}
+void eb_switch_video_set_scale(int mode) {
+    scale_mode=mode==1?EB_SCALE_INTEGER:mode==2?EB_SCALE_ASPECT_LINEAR:EB_SCALE_ASPECT_NEAREST;
+    SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY,mode==2?"linear":"nearest");
+}
+void platform_video_shutdown(void) {
+    if(frame_texture){SDL_DestroyTexture(frame_texture);frame_texture=NULL;}
+    if(renderer){SDL_DestroyRenderer(renderer);renderer=NULL;}
+    if(window){SDL_DestroyWindow(window);window=NULL;}
+}
+void platform_video_begin_frame(void) { }
+void platform_video_send_scanline(int y,const pixel_t *pixels) {
+    if(y>=0 && y<EB_VIEWPORT_HEIGHT && pixels)
+        memcpy(frame + (size_t)y * (size_t)EB_VIEWPORT_WIDTH, pixels,
+               (size_t)EB_VIEWPORT_WIDTH * sizeof(pixel_t));
+}
+pixel_t *platform_video_get_framebuffer(void) { return frame; }
+void platform_video_end_frame(void) {
+    if(!renderer || !frame_texture)return;
+    eb_switch_scene_art_frame(frame,EB_VIEWPORT_WIDTH,EB_VIEWPORT_HEIGHT);
+    /* SDL_UpdateTexture pitch is in BYTES, not pixels: 400 * 2 = 800. */
+    const int stride_bytes = EB_VIEWPORT_WIDTH * (int)sizeof(pixel_t);
+    if(SDL_UpdateTexture(frame_texture,NULL,frame,stride_bytes)!=0)return;
+    int width=1280,height=720;
+    if(SDL_GetRendererOutputSize(renderer,&width,&height)!=0) {
+        width=1280; height=720;
+    }
+    /* No stretched widescreen: original viewport is aspect-fitted until the
+     * world renderer itself can draw additional scenery at 16:9. */
+    EbWsRect fit=eb_scale_destination((EbWsSize){EB_VIEWPORT_WIDTH,EB_VIEWPORT_HEIGHT},
+                                          (EbWsSize){width,height},scale_mode);
+    SDL_Rect dst={fit.x,fit.y,fit.width,fit.height};
+    SDL_SetRenderDrawColor(renderer,0,0,0,255);
+    SDL_RenderClear(renderer);
+    SDL_RenderCopy(renderer,frame_texture,NULL,&dst);
+    if(eb_switch_menu_open)qol_draw_menu(width,height);
+    SDL_RenderPresent(renderer);
+}
+void platform_video_set_vsync(bool enabled) {
+    /* SDL2 renderer vsync is selected at creation; preserve API contract. */
+    use_vsync=enabled;
+    (void)use_vsync;
+}
+,"00100011111010001110001011111000100"},
+        {':',"00000001000010000000001000010000000"},
+        {'-',"00000000000000011111000000000000000"},
+        {'/',"00001000010001000100010001000010000"},
+        {'>',"10000010000010000010001000100010000"}
+    };
+    for(unsigned i=0;i<sizeof(atlas)/sizeof(atlas[0]);++i)
+        if(atlas[i].c==c)return atlas[i].bits;
+    return atlas[sizeof(atlas)/sizeof(atlas[0])-1].bits;
+}
+static void qol_text(int x,int y,int scale,const char *str,SDL_Color c) {
+    SDL_SetRenderDrawColor(renderer,c.r,c.g,c.b,255);
+    for(;*str;++str,x+=scale*6) {
+        const char *g=qol_glyph(*str);
+        for(int yy=0;yy<7;++yy)for(int xx=0;xx<5;++xx)
+            if(g[yy*5+xx]=='1') {
+                SDL_Rect rect={x+xx*scale,y+yy*scale,scale,scale};
+                SDL_RenderFillRect(renderer,&rect);
+            }
+    }
+}
+static void qol_draw_menu(int w,int h) {
+    SDL_RenderSetScale(renderer,(float)w/1280.0f,(float)h/720.0f);
+    SDL_SetRenderDrawBlendMode(renderer,SDL_BLENDMODE_BLEND);
+    qol_rect(0,0,1280,720,(SDL_Color){6,12,19,210});
+    qol_rect(222,70,836,580,(SDL_Color){25,33,43,255});
+    qol_rect(222,70,836,6,(SDL_Color){137,204,190,255});
+    qol_text(266,108,4,"EARTHBOUND", (SDL_Color){239,246,245,255});
+    qol_text(269,152,2,"QUALITY OF LIFE", (SDL_Color){154,184,183,255});
+    qol_rect(266,195,745,1,(SDL_Color){76,94,105,255});
+    const char *labels[]={
+        "SCREEN SCALE","QUICK TEXT","NO DAD CALLS","NO HOMESICKNESS",
+        "AUTO HEAL","HEAL PARTY","ADD $1000","RETURN TO GAME"
+    };
+    const char *scales[]={"NEAREST","INTEGER","LINEAR"};
+    for(int i=0;i<8;++i) {
+        int y=208+i*45;
+        if(eb_switch_menu_selected==i) {
+            qol_rect(262,y,750,41,(SDL_Color){54,91,101,255});
+            qol_rect(262,y,5,41,(SDL_Color){153,234,205,255});
+            qol_text(277,y+12,2,">",(SDL_Color){200,241,218,255});
+        }
+        qol_text(310,y+12,2,labels[i],(SDL_Color){245,246,244,255});
+        const char *value=NULL;
+        if(i==0)value=scales[eb_switch_menu_scale%3];
+        if(i==1)value=eb_switch_menu_fast_text?"ON":"OFF";
+        if(i==2)value=eb_switch_menu_no_dad?"ON":"OFF";
+        if(i==3)value=eb_switch_menu_no_homesick?"ON":"OFF";
+        if(i==4)value=eb_switch_menu_auto_heal?"ON":"OFF";
+        if(value)qol_text(841,y+12,2,value,(SDL_Color){177,232,207,255});
+    }
+    qol_rect(266,583,745,1,(SDL_Color){76,94,105,255});
+    qol_text(286,604,2,"DPAD SELECT    A CONFIRM    B CLOSE",
+             (SDL_Color){164,189,194,255});
+    SDL_RenderSetScale(renderer,1.0f,1.0f);
+}
+
 static EbScaleMode scale_mode=EB_SCALE_ASPECT_NEAREST;
 
 static void read_presentation_settings(void) {
