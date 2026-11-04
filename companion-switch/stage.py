@@ -279,7 +279,7 @@ def main():
     video_text = video.read_text()
     video_text = replace_required(
         video_text, '#include "platform/platform.h"',
-        '#include "platform/platform.h"\\n#include "game/settings.h"',
+        '#include "platform/platform.h"\n#include "game/settings.h"',
         "Switch video settings header")
     video_text = replace_required(
         video_text, '    eb_switch_scene_art_frame(frame,EB_VIEWPORT_WIDTH,EB_VIEWPORT_HEIGHT);',
@@ -319,7 +319,7 @@ def main():
     input_text = input_file.read_text()
     input_text = replace_required(
         input_text, '#include "game/game_state.h"',
-        '#include "game/game_state.h"\\n#include "game/settings.h"',
+        '#include "game/game_state.h"\n#include "game/settings.h"',
         "Switch alternate controls header")
     input_text = replace_required(
         input_text, '    uint16_t next = eb_switch_map_pad(buttons);',
