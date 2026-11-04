@@ -128,7 +128,7 @@ def main():
         "Switch achievement SD device root")
     achievements_code = replace_required(
         achievements_code, "if(flock(lock_handle,LOCK_EX|LOCK_NB)!=0){close_store();return false;}",
-        "#ifndef __SWITCH__\\n if(flock(lock_handle,LOCK_EX|LOCK_NB)!=0){close_store();return false;}\\n#endif",
+        "#ifndef __SWITCH__\n if(flock(lock_handle,LOCK_EX|LOCK_NB)!=0){close_store();return false;}\n#endif",
         "Switch achievement profile lock")
     achievements.write_text(achievements_code)
 
@@ -300,7 +300,7 @@ def main():
     # Activate achievements for real gameplay; the desktop main used to
     # do this, but the standalone Switch main never did.
     s = replace_required(s, '#include "game/settings.h"',
-                         '#include "game/settings.h"\\n#include "game/eb_achievements.h"',
+                         '#include "game/settings.h"\n#include "game/eb_achievements.h"',
                          "Switch achievements header")
     s = replace_required(s, '    trace("Entering game_init");',
                          '''    if (eb_achievements_init(
