@@ -378,6 +378,51 @@ void platform_audio_msu_unload(void);''',
     s = replace_required(s, '    if (audio_started) platform_audio_shutdown();',
                          '    if (audio_started) platform_audio_shutdown();\n    platform_audio_msu_unload();',
                          "MSU shutdown")
+    # Suspend overlays are serviced at the outermost root loop only.
+    # Rewind and manual points never read/write the game's normal SRAM.
+    s = replace_required(s, '#include "game/settings.h"',
+                         '''#include "game/settings.h"
+extern bool eb_switch_menu_open;
+extern int companion_hub_action;
+extern int companion_hub_slot;
+extern char companion_hub_status[48];
+void companion_hub_present_paused(void);
+void companion_hub_invalidate_previews(void);
+void companion_suspend_init(void);
+void companion_suspend_frame_tick(void);
+bool companion_suspend_action(int,int,const uint16_t*,int,int);''',
+                         "Companion suspend frontend declarations")
+    s = replace_required(s, '    trace("game_init returned");',
+                         '''    trace("game_init returned");
+    companion_suspend_init();''',
+                         "Companion suspend storage startup")
+    s = replace_required(s, '        game_loop_step();',
+                         '''        if (eb_switch_menu_open) {
+            /* Keep the snapshot at a root-loop boundary, not inside game logic.
+             * Controller continues polling; simulation does not advance. */
+            platform_input_poll();
+            if (companion_hub_action) {
+                int request = companion_hub_action;
+                companion_hub_action = 0;
+                bool ok = companion_suspend_action(request, companion_hub_slot,
+                    (const uint16_t*)platform_video_get_framebuffer(),
+                    EB_VIEWPORT_WIDTH, EB_VIEWPORT_HEIGHT);
+                snprintf(companion_hub_status,sizeof(companion_hub_status),
+                         "%s", ok ? "SUCCESS" : "UNAVAILABLE");
+                if (ok) {
+                    companion_hub_invalidate_previews();
+                    if (request != 1) eb_switch_menu_open = false;
+                }
+            }
+            companion_hub_present_paused();
+            SDL_Delay(16);
+            continue;
+        }
+        game_loop_step();''',
+                         "Companion pause and suspend command dispatch")
+    s = replace_required(s, '        host_root_boundary();',
+                         '        host_root_boundary();\\n        companion_suspend_frame_tick();',
+                         "Companion rewind history capture")
     main_file.write_text(s)
 
     for name in ("platform/switch_sdl2_video.c", "platform/switch_sdl2_input.c"):
