@@ -119,10 +119,18 @@ def main():
     dst = STAGE / "port" / "switch"
     shutil.copytree(PORT, dst, ignore=shutil.ignore_patterns("build", ".DS_Store"), dirs_exist_ok=True)
 
+    # Link the Companion-only platform extension functions missing from the
+    # vanilla Switch frontend, without modifying the upstream engine sources.
+    shutil.copy2(ROOT / "companion-switch" / "platform_compat.c",
+                 dst / "platform" / "companion_compat.c")
+
     # Companion's engine needs dynamic, versioned asset packs. Do NOT embed
     # the vanilla binary tables from the already-compiled EarthBound port.
     cmake = dst / "CMakeLists.txt"
     s = cmake.read_text()
+    s = replace_required(s, "    platform/switch_debug.c",
+                         "    platform/switch_debug.c\\n    platform/companion_compat.c",
+                         "Companion compatibility link source")
     s = replace_required(s, "set(EB_ENABLE_AUDIO ON CACHE BOOL",
                          'set(EB_RUNTIME_ASSETS ON CACHE BOOL "Companion runtime asset packs" FORCE)\nset(EB_ENABLE_AUDIO ON CACHE BOOL',
                          "Switch CMake setup")
@@ -154,6 +162,24 @@ def main():
     for name in ("platform/switch_sdl2_video.c", "platform/switch_sdl2_input.c"):
         file = dst / name
         file.write_text(file.read_text().replace("/switch/earthbound-switch/", "/switch/earthbound-companion/"))
+
+    # Wire the vanilla settings overlay's scale callback to the actual
+    # Switch presentation state, instead of leaving a dangling symbol.
+    video = dst / "platform" / "switch_sdl2_video.c"
+    video_code = video.read_text()
+    video_code += """
+void eb_switch_video_set_scale(int mode) {
+    if (mode < EB_SCALE_ASPECT_NEAREST || mode > EB_SCALE_ASPECT_LINEAR)
+        return;
+    scale_mode = (EbScaleMode)mode;
+    SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY,
+                mode == EB_SCALE_ASPECT_LINEAR ? "linear" : "nearest");
+    if (frame_texture)
+        SDL_SetTextureScaleMode(frame_texture,
+            mode == EB_SCALE_ASPECT_LINEAR ? SDL_ScaleModeLinear : SDL_ScaleModeNearest);
+}
+"""
+    video.write_text(video_code)
 
     print(f"Prepared isolated Companion Switch stage: {STAGE}")
     print("Source: prepared Companion C engine + existing libnx/SDL2 Switch frontend")
