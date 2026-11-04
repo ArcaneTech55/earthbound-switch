@@ -233,10 +233,6 @@ def main():
                          '''        perror("Cannot select sdmc filesystem");
         startup_error = "Cannot select SD filesystem";''',
                          "SD working directory failure")
-    s = replace_required(s, '        fprintf(stderr, "Cannot create EarthBound save directory\n");',
-                         '''        fprintf(stderr, "Cannot create EarthBound save directory\\\n");
-        startup_error = "Cannot create Companion SD folder";''',
-                         "SD folder creation failure")
     s = replace_required(s, '    startup_log = fopen("sdmc:/switch/earthbound-companion/startup.log", "w");',
                          '''    startup_log = fopen("sdmc:/switch/earthbound-companion/startup.log", "w");
     if (!startup_log)
