@@ -6,7 +6,7 @@
 
 extern bool eb_switch_menu_open;
 extern int eb_switch_menu_selected;
-extern bool eb_switch_menu_instant_text;
+extern int eb_switch_menu_scale;
 extern bool eb_switch_menu_fast_forward;
 
 typedef struct { char c; unsigned char row[7]; } Glyph;
@@ -97,7 +97,7 @@ void companion_hub_draw(SDL_Renderer*r,int width,int height){
     label(r,65,62,4,"COMPANION HUB",fg);
     label(r,66,104,2,"EARTHBOUND / SWITCH",dim);
     fill(r,64,140,832,1,(SDL_Color){70,91,102,255});
-    const char*names[6]={"RESUME GAME","SMOOTH PIXELS","SCANLINES","INSTANT TEXT","FAST FORWARD","CLOSE HUB"};
+    const char*names[6]={"RESUME GAME","SMOOTH PIXELS","SCANLINES","SCALE MODE","FAST FORWARD","CLOSE HUB"};
     int ys[6]={172,220,268,316,364,412};
     for(int i=0;i<6;i++){
         if(eb_switch_menu_selected==i){
@@ -110,7 +110,7 @@ void companion_hub_draw(SDL_Renderer*r,int width,int height){
     label(r,525,171,3,"DISPLAY",accent);
     detail(r,528,222,"PIXEL FILTER",engine_fx_antialiasing?"SOFT":"SHARP");
     detail(r,528,294,"SCANLINES",engine_fx_scanlines?"ON":"OFF");
-    detail(r,528,366,"TEXT",eb_switch_menu_instant_text?"INSTANT":"NORMAL");
+    detail(r,528,366,"LAYOUT",eb_switch_menu_scale==1?"INTEGER":eb_switch_menu_scale==2?"LINEAR":"ASPECT");
     detail(r,528,438,"SPEED",eb_switch_menu_fast_forward?"FAST":"NORMAL");
     fill(r,64,470,832,1,(SDL_Color){70,91,102,255});
     label(r,70,485,2,"A SELECT   B BACK   ZL + PLUS MENU",dim);
