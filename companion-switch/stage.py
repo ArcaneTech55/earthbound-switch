@@ -13,6 +13,7 @@ WORK = ROOT / "companion-switch" / ".work"
 NATIVE = WORK / "native"
 STAGE = WORK / "switch-stage"
 PORT = ROOT / "port" / "switch"
+COMPANION = WORK / "companion"
 
 def replace_required(text: str, old: str, new: str, label: str) -> str:
     if old not in text:
@@ -25,6 +26,8 @@ def main():
     args = ap.parse_args()
     if not (NATIVE / "src" / "CMakeLists.txt").is_file():
         ap.error("Missing patched Companion source: run bash companion-switch/prepare.sh")
+    if not (COMPANION / "Achievements" / "Core" / "src" / "companion_achievements.c").is_file():
+        ap.error("Missing Companion achievements core: verify companion-switch/.work/companion")
     if not (PORT / "CMakeLists.txt").is_file():
         ap.error("Missing known Switch backend")
     if STAGE.exists():
@@ -33,6 +36,7 @@ def main():
         shutil.rmtree(STAGE)
     shutil.copytree(NATIVE, STAGE, ignore=shutil.ignore_patterns(".git", "build", "__pycache__", ".DS_Store"),
                     symlinks=True)
+    shutil.copytree(COMPANION / "Achievements", STAGE / "Achievements")
     dst = STAGE / "port" / "switch"
     shutil.copytree(PORT, dst, ignore=shutil.ignore_patterns("build", ".DS_Store"), dirs_exist_ok=True)
 
@@ -43,7 +47,13 @@ def main():
     s = replace_required(s, "set(EB_ENABLE_AUDIO ON CACHE BOOL",
                          'set(EB_RUNTIME_ASSETS ON CACHE BOOL "Companion runtime asset packs" FORCE)\nset(EB_ENABLE_AUDIO ON CACHE BOOL',
                          "Switch CMake setup")
+    # The upstream achievements patch expects ../../Achievements/Core relative to
+    # native/src. In our isolated stage it lives alongside src, so override
+    # the path explicitly (rather than touching the read-only native checkout).
     s = s.replace("EarthboundSwitch", "EarthBoundCompanion")
+    s = replace_required(s, 'add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/../../src"',
+                         'set(EB_ACHIEVEMENTS_CORE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../Achievements/Core" CACHE PATH "Companion achievement core" FORCE)\\nadd_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/../../src"',
+                         "Companion achievement core path")
     s = s.replace('NAME "EarthBound Switch"', 'NAME "EarthBound Companion"')
     s = s.replace('AUTHOR "EarthBound Switch Homebrew"', 'AUTHOR "Companion Switch community port"')
     cmake.write_text(s)
