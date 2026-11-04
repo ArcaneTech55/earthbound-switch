@@ -1,6 +1,6 @@
 # EarthBound Companion → Switch native port
 
-**Status: source preparation only, NOT a playable Companion .nro.**
+**Status: first experimental source-level Switch integration and build attempt; no verified playable Companion .nro yet.**
 
 Source: https://github.com/rages4calm/earthbound-companion
 
@@ -12,8 +12,10 @@ From ~/Documents/earthbound-switch, on branch feature/earthbound-companion-switc
 
     bash companion-switch/prepare.sh
     bash companion-switch/check.sh
+    python3 companion-switch/stage.py
+    bash companion-switch/build.sh
 
-Preparation calls Companion's official scripts/prepare_port_sources.py, which clones the pinned native source and applies the ordered Companion C patches. Local sources are in companion-switch/.work/, excluded from Git. No game data or ROM is downloaded or uploaded. Do not run twice over existing sources.
+Preparation calls Companion's official scripts/prepare_port_sources.py, which clones the pinned native source and applies the ordered Companion C patches. The stage script copies the patched C engine into a separate working tree and attaches the known SDL2/libnx Switch backend, selecting Companion's runtime asset-pack mode. The build script then invokes devkitPro and writes diagnostic output to companion-switch/.work/companion-switch-build.log. Local sources are in companion-switch/.work/, excluded from Git. No game data or ROM is downloaded or uploaded. Do not run twice over existing sources.
 
 ## Work remaining before a real NRO
 
@@ -23,7 +25,7 @@ Preparation calls Companion's official scripts/prepare_port_sources.py, which cl
 4. Integrate locally prepared assets.pak for Original, then separately add MaternalBound Redux.
 5. Verify title, story, controller, save/reload, widescreen, achievements, and performance on real Switch hardware.
 
-Never label the original earthbound-switch build as the Companion build.
+The integration is experimental: the first build may reveal incompatible platform API calls, source guards, or linking requirements. Successful compilation alone does not prove a playable game. Do not install a generated NRO over the original EarthBound file or point it at vanilla saves. Never label the original earthbound-switch build as the Companion build.
 
 ## Licensing
 
