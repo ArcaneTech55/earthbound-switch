@@ -153,3 +153,17 @@ performance, video thumbnails, audio resync, and returning from sleep.
 Always back up `earthbound.srm` and keep an ordinary in-game save. Normal
 SRAM and achievement profiles are not intentionally overwritten by the
 snapshot features. Rewind isn't a substitute for regular saves.
+
+## Native recomp quick-save controller mapping (experimental)
+
+The native engine's F6/F7 quick-save API was unreachable from the existing
+Switch SDL controller backend (`platform_input_get_aux` always returned zero).
+The Switch frontend now maps **ZR + Y** (Nintendo face-button labels) to
+`AUX_SAVESTATE` and **ZR + X** to `AUX_LOAD_STATE`. These events are
+debounced by the existing host auxiliary-input edge detector, and the face
+button is withheld from gameplay while the shortcut is pressed. Engine quick
+saves use `sdmc:/switch/earthbound-companion/states/quick0.bin.0` and
+`quick0.bin.1`, separate from manual suspend points and rewind.
+This is the engine's quick-save, **not** a fix or replacement for the scripted
+Redux menu/phone-save interaction. An on-device save and reboot/load check
+is still required. Back up any existing SRAM before testing.
