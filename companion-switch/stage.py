@@ -126,10 +126,31 @@ def main():
         "if (!(i==2 && p[1]==':') && p[i-1]!='/' && p[i-1]!='\\\\' && !directory_one(p))",
         "if (!(i==2 && p[1]==':') && !(i==5 && strncmp(p, \"sdmc:\", 5)==0) && p[i-1]!='/' && p[i-1]!='\\\\' && !directory_one(p))",
         "Switch achievement SD device root")
+    # libnx doesn't expose desktop flock headers.
+    achievements_code = replace_required(
+        achievements_code, "#include <sys/file.h>",
+        "#ifndef __SWITCH__\\n#include <sys/file.h>\\n#endif",
+        "Switch achievement locking headers")
     achievements_code = replace_required(
         achievements_code, "if(flock(lock_handle,LOCK_EX|LOCK_NB)!=0){close_store();return false;}",
         "#ifndef __SWITCH__\n if(flock(lock_handle,LOCK_EX|LOCK_NB)!=0){close_store();return false;}\n#endif",
         "Switch achievement profile lock")
+    # Some libnx/FAT implementations cannot rename over an existing file.
+    # Preserve the existing achievement profile in a backup first.
+    achievements_code = replace_required(
+        achievements_code,
+        "ok=rename(temp,profile)==0;",
+        """if(rename(temp,profile)==0) {
++   ok=true;
++  } else {
++   char backup[4102]; snprintf(backup,sizeof(backup),"%s.bak",profile);
++   remove(backup);
++   if(rename(profile,backup)==0) {
++    ok=rename(temp,profile)==0;
++    if(!ok)rename(backup,profile);
++   } else ok=false;
++  }""".replace("\\n+", "\\n"),
+        "Achievement profile safe replacement")
     achievements.write_text(achievements_code)
 
     dst = STAGE / "port" / "switch"
