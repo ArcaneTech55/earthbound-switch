@@ -12,6 +12,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/stat.h>
+#include <unistd.h>
 
 #include "game_main.h"
 #include "platform/platform.h"
@@ -44,13 +45,22 @@ int main(int argc, char **argv) {
     }
     sd_mounted = true;
 
-    if (!ensure_directory("sdmc:/switch") ||
-        !ensure_directory("sdmc:/switch/earthbound-switch")) {
+    /* Explicitly make sdmc the current/default devoptab device. This makes
+     * absolute /switch/... paths refer to the SD card, independent of the
+     * application's startup cwd. libnx also supports sdmc:/... paths. */
+    if (chdir("sdmc:/") != 0) {
+        perror("Cannot select sdmc filesystem");
+        exit_code = EXIT_FAILURE;
+        goto shutdown;
+    }
+
+    if (!ensure_directory("/switch") ||
+        !ensure_directory("/switch/earthbound-switch")) {
         fprintf(stderr, "Cannot create EarthBound save directory\n");
         exit_code = EXIT_FAILURE;
         goto shutdown;
     }
-    platform_save_set_path("sdmc:/switch/earthbound-switch/earthbound.srm");
+    platform_save_set_path("/switch/earthbound-switch/earthbound.srm");
 
     /* The Switch SDL port selects its window renderer, audio device and
      * controller backend. The video module creates the accelerated window
