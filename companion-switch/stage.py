@@ -43,19 +43,19 @@ def main():
     # staged game C files in one pass instead of fixing one failure per build.
     # Do not touch the pinned source checkout; avoid generated/vendor sources.
     import re
-    stdio_calls = re.compile(r"\\b(?:fprintf|printf|sprintf|snprintf|vfprintf|"
+    stdio_calls = re.compile(r"\b(?:fprintf|printf|sprintf|snprintf|vfprintf|"
                              r"vsnprintf|fopen|fclose|fread|fwrite|fflush|"
-                             r"fseek|ftell|perror|stderr|stdout|stdin)\\b")
+                             r"fseek|ftell|perror|stderr|stdout|stdin)\b")
     fixed = []
     for source_file in (STAGE / "src").rglob("*.c"):
         if "vendor" in source_file.relative_to(STAGE / "src").parts:
             continue
         source_text = source_file.read_text()
         if stdio_calls.search(source_text) and not re.search(
-            r"^\\s*#\\s*include\\s*[<\\\"]stdio\\.h[>\\\"]",
+            r"^\s*#\s*include\s*[<\\"]stdio\.h[>\\"]",
             source_text, re.MULTILINE
         ):
-            source_file.write_text("#include <stdio.h>\\n" + source_text)
+            source_file.write_text("#include <stdio.h>\n" + source_text)
             fixed.append(source_file.relative_to(STAGE).as_posix())
     print(f"Staged {len(fixed)} missing stdio includes:", ", ".join(fixed))
 
