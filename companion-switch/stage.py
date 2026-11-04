@@ -170,7 +170,16 @@ def main():
     audio_source = STAGE / "port" / "unix" / "platform" / "sdl2_audio.c"
     audio_text = audio_source.read_text()
     if "#include <stdio.h>" not in audio_text:
-        audio_source.write_text("#include <stdio.h>\n" + audio_text)
+        audio_text="#include <stdio.h>\\n" + audio_text
+    audio_marker="void platform_audio_shutdown(void) {"
+    if audio_marker not in audio_text:
+        raise RuntimeError("Companion audio shutdown marker missing")
+    audio_text=audio_text.replace(audio_marker,
+        """void companion_audio_pause(bool paused) {
+    if(audio_device) SDL_PauseAudioDevice(audio_device,paused?1:0);
+}
+void platform_audio_shutdown(void) {""",1)
+    audio_source.write_text(audio_text)
 
     # Link the Companion-only platform extension functions missing from the
     # vanilla Switch frontend, without modifying the upstream engine sources.
