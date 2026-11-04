@@ -1,7 +1,9 @@
 #include "platform/platform.h"
 #include "../input_mapping.h"
 #include <SDL.h>
+#include <stdio.h>
 #include "game/game_state.h"
+#include "game/display_text.h"
 #include "include/pad.h"
 
 /* SDL2 game controller driver for Nintendo Switch. SDL2 maps physical
@@ -19,6 +21,7 @@ bool eb_switch_menu_instant_text = false;
 bool eb_switch_menu_auto_heal = false;
 static bool menu_combo_latched = false;
 static uint32_t frame_counter = 0;
+static uint8_t previous_text_speed = 1;
 extern void eb_switch_video_set_scale(int mode);
 static void heal_party(void) {
     for (int i = 0; i < 4; ++i) {
@@ -29,13 +32,30 @@ static void heal_party(void) {
         for (unsigned j = 0; j < sizeof(p->afflictions); ++j) p->afflictions[j] = 0;
     }
 }
+static void save_scaling(void) {
+    FILE *file=fopen("/switch/earthbound-switch/scaling.cfg", "w");
+    if(!file)return;
+    const char *names[]={"nearest","integer","linear"};
+    fprintf(file,"%s\n",names[eb_switch_menu_scale%3]);
+    fclose(file);
+}
 static void menu_action(void) {
     switch (eb_switch_menu_selected) {
         case 0:
             eb_switch_menu_scale = (eb_switch_menu_scale + 1) % 3;
             eb_switch_video_set_scale(eb_switch_menu_scale);
+            save_scaling();
             break;
-        case 1: eb_switch_menu_instant_text = !eb_switch_menu_instant_text; break;
+        case 1:
+            if(!eb_switch_menu_instant_text) {
+                previous_text_speed = dt.selected_text_speed;
+                dt.selected_text_speed = 0; /* Fastest native typewriter delay, 60 FPS */
+                eb_switch_menu_instant_text = true;
+            } else {
+                dt.selected_text_speed = previous_text_speed;
+                eb_switch_menu_instant_text = false;
+            }
+            break;
         case 2: eb_switch_menu_auto_heal = !eb_switch_menu_auto_heal; break;
         case 3: heal_party(); break;
         case 4:
@@ -100,6 +120,7 @@ void platform_input_poll(void) {
                 buttons|=mapping[i].bit;
     }
     ++frame_counter;
+    if (eb_switch_menu_instant_text) dt.selected_text_speed = 0;
     bool combo = controller &&
         SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_LEFTSTICK) &&
         SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_START);
