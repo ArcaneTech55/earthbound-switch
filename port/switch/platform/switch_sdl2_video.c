@@ -6,9 +6,13 @@
 #include <SDL.h>
 #include <string.h>
 
-/* Presents the native game renderer viewport without changing scene geometry.
- * The optional 400x225 viewport draws additional world content where supported.
- * Remaining scene-specific artwork still needs proper widescreen authoring. */
+/* Native game PPU produces EB_VIEWPORT_WIDTH pixels per scanline.
+ * Both framebuffer row stride and SDL texture upload pitch use that width.
+ * Do not use SNES_WIDTH (256) here: it is a separate hardware constant. */
+_Static_assert(sizeof(pixel_t) == 2, "SDL BGR565 requires 16-bit pixel_t");
+_Static_assert(EB_VIEWPORT_HEIGHT == 224, "Switch PPU target is 224 rows");
+_Static_assert(EB_VIEWPORT_WIDTH == 400 || EB_VIEWPORT_WIDTH == 256,
+               "Switch viewport must be 400 or 256 pixels wide");
 static SDL_Window *window;
 static SDL_Renderer *renderer;
 static SDL_Texture *frame_texture;
@@ -17,7 +21,7 @@ static bool use_vsync=true;
 static EbScaleMode scale_mode=EB_SCALE_ASPECT_NEAREST;
 
 static void read_presentation_settings(void) {
-    FILE *f=fopen("sdmc:/switch/earthbound-switch/scaling.cfg","r");
+    FILE *f=fopen("/switch/earthbound-switch/scaling.cfg","r");
     if(!f)return;
     char mode[32]={0};
     if(fgets(mode,sizeof(mode),f)) {
@@ -61,15 +65,16 @@ void platform_video_shutdown(void) {
 void platform_video_begin_frame(void) { }
 void platform_video_send_scanline(int y,const pixel_t *pixels) {
     if(y>=0 && y<EB_VIEWPORT_HEIGHT && pixels)
-        memcpy(frame+(size_t)y*EB_VIEWPORT_WIDTH,pixels,
-               (size_t)EB_VIEWPORT_WIDTH*sizeof(pixel_t));
+        memcpy(frame + (size_t)y * (size_t)EB_VIEWPORT_WIDTH, pixels,
+               (size_t)EB_VIEWPORT_WIDTH * sizeof(pixel_t));
 }
 pixel_t *platform_video_get_framebuffer(void) { return frame; }
 void platform_video_end_frame(void) {
     if(!renderer || !frame_texture)return;
     eb_switch_scene_art_frame(frame,EB_VIEWPORT_WIDTH,EB_VIEWPORT_HEIGHT);
-    if(SDL_UpdateTexture(frame_texture,NULL,frame,
-        EB_VIEWPORT_WIDTH*(int)sizeof(pixel_t))!=0)return;
+    /* SDL_UpdateTexture pitch is in BYTES, not pixels: 400 * 2 = 800. */
+    const int stride_bytes = EB_VIEWPORT_WIDTH * (int)sizeof(pixel_t);
+    if(SDL_UpdateTexture(frame_texture,NULL,frame,stride_bytes)!=0)return;
     int width=1280,height=720;
     if(SDL_GetRendererOutputSize(renderer,&width,&height)!=0) {
         width=1280; height=720;
