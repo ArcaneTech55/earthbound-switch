@@ -31,7 +31,7 @@ static void trace(const char *format, ...) {
     va_start(args, format);
     vfprintf(startup_log, format, args);
     va_end(args);
-    fputc('\\n', startup_log);
+    fputc('\n', startup_log);
     fflush(startup_log);
 }
 
