@@ -1,0 +1,8 @@
+.work/
+*.nro
+*.elf
+*.nacp
+*.sfc
+*.smc
+*.srm
+*.pak
