@@ -14,6 +14,8 @@
  */
 #include "platform/platform.h"
 #include <stdio.h>
+#include <errno.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #ifdef _WIN32
@@ -30,6 +32,17 @@ void platform_save_set_path(const char *path) {
 }
 
 bool platform_save_init(void) {
+#ifdef __SWITCH__
+    /* Recover a power loss between moving the old image to .bak and
+     * installing the new one, before the game checks SRAM integrity. */
+    if (access(save_file_path, F_OK) != 0) {
+        char backup_path[1024];
+        int n = snprintf(backup_path, sizeof(backup_path), "%s.bak", save_file_path);
+        if (n <= 0 || (size_t)n >= sizeof(backup_path)) return false;
+        if (access(backup_path, F_OK) == 0 && rename(backup_path, save_file_path) != 0)
+            return false;
+    }
+#endif
     /* Nothing to initialize for file-backed saves */
     return true;
 }
@@ -82,6 +95,7 @@ static void fsync_containing_dir(void) {
 #endif
 
 bool platform_save_write(const void *src, size_t offset, size_t size) {
+    if (!src || size == 0 || offset > SIZE_MAX - size) return false;
     /* Read whatever's on disk now so a write that only touches one
      * SaveBlock copy (or the 2-byte version word) doesn't lose the rest
      * of the file -- callers always write a sub-range, never the whole
@@ -126,7 +140,7 @@ bool platform_save_write(const void *src, size_t offset, size_t size) {
 #ifdef _WIN32
     if (ok && _commit(_fileno(wf)) != 0) /* durability: the new file must hit stable storage */
         ok = false;
-#else
+#elif !defined(__SWITCH__)
     if (ok && fsync(fileno(wf)) != 0) /* durability: the new file must hit stable storage */
         ok = false;
 #endif
@@ -148,11 +162,28 @@ bool platform_save_write(const void *src, size_t offset, size_t size) {
     remove(save_file_path);
 #endif
     if (rename(tmp_path, save_file_path) != 0) {
+#ifdef __SWITCH__
+        /* Some Switch SD backends cannot replace an existing destination.
+         * Keep the previous SRAM image recoverable until installation. */
+        char backup_path[1024];
+        int n = snprintf(backup_path, sizeof(backup_path), "%s.bak", save_file_path);
+        if (n > 0 && (size_t)n < sizeof(backup_path) &&
+            access(save_file_path, F_OK) == 0) {
+            remove(backup_path);
+            if (rename(save_file_path, backup_path) == 0) {
+                if (rename(tmp_path, save_file_path) == 0) {
+                    remove(backup_path);
+                    return true;
+                }
+                rename(backup_path, save_file_path);
+            }
+        }
+#endif
         remove(tmp_path);
         return false;
     }
 
-#ifndef _WIN32
+#if !defined(_WIN32) && !defined(__SWITCH__)
     fsync_containing_dir();
 #endif
     return true;
