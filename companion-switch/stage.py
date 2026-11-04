@@ -643,6 +643,35 @@ void eb_switch_video_set_scale(int mode) {
     if (smooth_texture) SDL_SetTextureScaleMode(smooth_texture,SDL_ScaleModeLinear);
 }
 """
+    video_code += """
+/* Re-present the last frame while input polls but the game simulation stops.
+ * No scene art, filtering, or scanline processing is applied a second time. */
+void companion_hub_present_paused(void) {
+    if (!renderer || !frame_texture) return;
+    int width=1280,height=720;
+    if(SDL_GetRendererOutputSize(renderer,&width,&height)!=0) {
+        width=1280;height=720;
+    }
+    SDL_Rect source={0,0,EB_VIEWPORT_WIDTH,EB_VIEWPORT_HEIGHT};
+    if(engine_aspect_ratio==ASPECT_RATIO_4_3 && EB_VIEWPORT_WIDTH>SNES_WIDTH){
+        source.x=(EB_VIEWPORT_WIDTH-SNES_WIDTH)/2;source.w=SNES_WIDTH;
+    }
+    EbWsRect fitted=eb_scale_destination(
+        (EbWsSize){source.w,source.h},(EbWsSize){width,height},scale_mode);
+    SDL_Rect dest={fitted.x,fitted.y,fitted.width,fitted.height};
+    SDL_Texture *chosen=(engine_fx_antialiasing&&smooth_texture)?
+                         smooth_texture:frame_texture;
+    if(chosen==smooth_texture){
+        source.x*=2;source.y*=2;source.w*=2;source.h*=2;
+    }
+    SDL_SetRenderDrawColor(renderer,0,0,0,255);
+    SDL_RenderClear(renderer);
+    SDL_RenderCopy(renderer,chosen,&source,&dest);
+    companion_hub_draw(renderer,width,height,(const uint16_t*)frame,
+                       EB_VIEWPORT_WIDTH,EB_VIEWPORT_HEIGHT);
+    SDL_RenderPresent(renderer);
+}
+"""
     video.write_text(video_code)
 
     print(f"Prepared isolated Companion Switch stage: {STAGE}")
