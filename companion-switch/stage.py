@@ -557,25 +557,63 @@ static pixel_t smooth_frame[EB_VIEWPORT_WIDTH*2*EB_VIEWPORT_HEIGHT*2];''',
         input_text, 'static bool menu_combo_latched = false;',
         'bool eb_switch_menu_fast_forward = false;\nstatic bool fast_forward_aux_pulse = false;\nstatic bool menu_combo_latched = false;',
         "Companion Hub fast-forward state")
+    input_text = replace_required(
+        input_text, 'static uint32_t frame_counter = 0;',
+        '''static uint32_t frame_counter = 0;
+int companion_hub_action = 0;
+int companion_hub_slot = 0;
+char companion_hub_status[48] = {0};
+static uint16_t menu_previous_pad;''',
+        "Companion suspend menu state")
+
     old_action_start = input_text.index('static void menu_action(void) {')
     old_action_end = input_text.index('\nbool platform_headless=',old_action_start)
     input_text = input_text[:old_action_start] + '''static void menu_action(void) {
+    companion_hub_status[0] = 0;
     switch (eb_switch_menu_selected) {
-        case 0: eb_switch_menu_open = false; break;
-        case 1: engine_fx_antialiasing = !engine_fx_antialiasing; break;
-        case 2: engine_fx_scanlines = !engine_fx_scanlines; break;
-        case 3:
-            eb_switch_menu_scale = (eb_switch_menu_scale + 1) % 3;
+        case 0: eb_switch_menu_open=false; break;
+        case 1: companion_hub_action=1; break;
+        case 2: companion_hub_action=2; break;
+        case 3: companion_hub_action=3; break;
+        case 4: engine_fx_antialiasing=!engine_fx_antialiasing; break;
+        case 5: engine_fx_scanlines=!engine_fx_scanlines; break;
+        case 6:
+            eb_switch_menu_scale=(eb_switch_menu_scale+1)%3;
             eb_switch_video_set_scale(eb_switch_menu_scale);
             break;
-        case 4:
-            eb_switch_menu_fast_forward = !eb_switch_menu_fast_forward;
-            fast_forward_aux_pulse = true;
-            break;
-        case 5: eb_switch_menu_open = false; break;
+        case 7: eb_switch_menu_open=false; break;
     }
 }
 ''' + input_text[old_action_end:]
+    input_text = replace_required(
+        input_text, '    menu_combo_latched = combo;',
+        '    menu_combo_latched = combo;',
+        "Menu combo latch")
+    input_text = replace_required(
+        input_text, '    if (eb_switch_menu_open) {\\n        uint16_t pressed = eb_switch_pad_pressed(held, next);',
+        '''    if (eb_switch_menu_open) {
+        uint16_t pressed = eb_switch_pad_pressed(menu_previous_pad, next);
+        menu_previous_pad = next;''',
+        "Menu edge-triggered input")
+    input_text = replace_required(
+        input_text, '(eb_switch_menu_selected + 5) % 6;',
+        '(eb_switch_menu_selected + 7) % 8;',
+        "Menu up selection")
+    input_text = replace_required(
+        input_text, '(eb_switch_menu_selected + 1) % 6;',
+        '(eb_switch_menu_selected + 1) % 8;',
+        "Menu down selection")
+    input_text = replace_required(
+        input_text, '        if (pressed & PAD_A) menu_action();',
+        '''        if (pressed & PAD_LEFT) companion_hub_slot=(companion_hub_slot+3)%4;
+        if (pressed & PAD_RIGHT) companion_hub_slot=(companion_hub_slot+1)%4;
+        if (pressed & PAD_A) menu_action();''',
+        "Menu suspend point selection")
+    input_text = replace_required(
+        input_text, '    } else if (eb_switch_menu_auto_heal && frame_counter % 60 == 0) {',
+        '''    } else if (eb_switch_menu_auto_heal && frame_counter % 60 == 0) {
+        menu_previous_pad=0;''',
+        "Menu key-release tracking")
     input_text = replace_required(
         input_text, 'uint16_t platform_input_get_aux(void) { return 0; }',
         '''uint16_t platform_input_get_aux(void) {
