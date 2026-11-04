@@ -120,3 +120,36 @@ testing on an actual Switch are still needed.
 ### Console-style overlay redesign
 
 The original teal Companion Hub has been replaced with a minimal console-style layout: a blurred real gameplay backdrop, a soft black scrim, a white rectangular selection bar in the left menu, a fine vertical dividing rule, four outlined status cards on the right, and simple A/B footer prompts. The right cards show **real graphics/speed settings** and are not fictional suspend slots. Suspend-point previews and rewind remain unimplemented. Visual output and performance have not been verified on Switch hardware.
+
+## Pause, manual suspend slots, thumbnail previews and experimental rewind
+
+The Companion overlay now pauses game simulation and pauses SDL audio while it
+is open. Menu/controller input and the overlay continue to render over a frozen
+game frame. Open using **ZL + Plus** or **L3 + Plus**, use Up/Down to choose a
+menu option, Left/Right to choose one of four suspend slots, **A** to act, and
+**B** to exit. Normal SRAM saving remains separate.
+
+Available actions:
+- **Create Point**: save a CRC-checked, ping-pong snapshot into the selected
+  manual slot and capture a real RGB565 screenshot thumbnail.
+- **Load Point**: restore that manual snapshot (and reset rewind history).
+- **Rewind 3 Sec**: restore the most recent available periodic snapshot and
+  discard the future timeline; use it repeatedly to step backward.
+- **Smooth Pixels**, **Scanlines**, **Scale Mode**: existing visual toggles.
+
+Manual slot snapshots live in
+`sdmc:/switch/earthbound-companion/states/manualN.bin.0` and `.1`.
+Their screenshot previews are `manualN.thumb` (160×90 raw RGB565).
+The rewind ring uses ten separate snapshot namespaces:
+`states/rewindN.bin.0` / `.1`; it captures approximately once per 180 game
+frames (~3 seconds) and keeps up to ~30 seconds of history. It is **not smooth
+frame-by-frame video reverse playback**. A prior run's rewind history is not
+reused when the game restarts. Rewind uses SD I/O and can cause periodic
+frame hitches; the first version prioritizes correctness over performance.
+No suspend/rewind state files are shipped in the NRO ZIP.
+
+**Hardware testing is still required** for capture/restore correctness,
+performance, video thumbnails, audio resync, and returning from sleep.
+Always back up `earthbound.srm` and keep an ordinary in-game save. Normal
+SRAM and achievement profiles are not intentionally overwritten by the
+snapshot features. Rewind isn't a substitute for regular saves.
