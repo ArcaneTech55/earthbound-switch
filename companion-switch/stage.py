@@ -38,14 +38,26 @@ def main():
                     symlinks=True)
     shutil.copytree(COMPANION / "Achievements", STAGE / "Achievements")
 
-    # Companion's diagnostic self-tests use fprintf(stderr, ...); include the
-    # standard declaration only in the isolated generated copy. Do not alter
-    # the upstream source checkout or remove the self-tests.
-    for name in ("battle.c", "battle_ui.c"):
-        source_file = STAGE / "src" / "game" / name
+    # Some Companion C modules use stdio for diagnostics or formatting without
+    # including its declarations. GCC 16 treats these as hard errors. Scan all
+    # staged game C files in one pass instead of fixing one failure per build.
+    # Do not touch the pinned source checkout; avoid generated/vendor sources.
+    import re
+    stdio_calls = re.compile(r"\\b(?:fprintf|printf|sprintf|snprintf|vfprintf|"
+                             r"vsnprintf|fopen|fclose|fread|fwrite|fflush|"
+                             r"fseek|ftell|perror|stderr|stdout|stdin)\\b")
+    fixed = []
+    for source_file in (STAGE / "src").rglob("*.c"):
+        if "vendor" in source_file.relative_to(STAGE / "src").parts:
+            continue
         source_text = source_file.read_text()
-        if "#include <stdio.h>" not in source_text:
-            source_file.write_text("#include <stdio.h>\n" + source_text)
+        if stdio_calls.search(source_text) and not re.search(
+            r"^\\s*#\\s*include\\s*[<\\\"]stdio\\.h[>\\\"]",
+            source_text, re.MULTILINE
+        ):
+            source_file.write_text("#include <stdio.h>\\n" + source_text)
+            fixed.append(source_file.relative_to(STAGE).as_posix())
+    print(f"Staged {len(fixed)} missing stdio includes:", ", ".join(fixed))
 
     dst = STAGE / "port" / "switch"
     shutil.copytree(PORT, dst, ignore=shutil.ignore_patterns("build", ".DS_Store"), dirs_exist_ok=True)
