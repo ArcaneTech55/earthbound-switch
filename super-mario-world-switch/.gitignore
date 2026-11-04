@@ -1,0 +1,8 @@
+.work/
+*.sfc
+*.smc
+*.nro
+*.elf
+*.nacp
+*.dat
+*.zip
