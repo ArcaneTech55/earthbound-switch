@@ -14,11 +14,11 @@ No playable release is available yet.
 - `platform/switch_debug.c`: early-port debug no-ops
 - `widescreen/scene_art.[ch]`: original deterministic procedural extension art for title, battle and selected cinematic gutters, with non-mirrored palette transitions
 - `widescreen/scaling.[ch]`: nearest-neighbor aspect-fit, integer pixel scaling and optional linear scaling
-- `widescreen/layout.[ch]`: 400x225 logical 16:9 layout foundation,
+- `widescreen/layout.[ch]`: 400x224 logical 16:9 layout foundation,
   rect placement and signed tile-grid math
 - Tests for input mapping and widescreen presentation math
 
-The native renderer now defaults to an **experimental 400x225 16:9 viewport**,
+The native renderer now defaults to an **experimental 400x224 16:9 viewport**,
 leveraging the upstream engine's wide-tilemap and full-coordinate sprite paths.
 Disable with `-DEB_SWITCH_TRUE_WIDESCREEN=OFF` to fall back to 256x224.
 Not all game scenes and effects have been adapted, so the widescreen output
@@ -79,9 +79,9 @@ Create `sdmc:/switch/earthbound-switch/scaling.cfg` on your SD card.
 Put exactly one of the following values on the first line:
 
 - `nearest` (default): preserve aspect ratio, nearest-neighbor filtering.
-  With the experimental 400x225 scene, fills 1280x720 (3.2x pixels).
+  With the experimental 400x224 scene, fills 1280x720 (3.2x pixels).
 - `integer`: use the largest whole-number scale and center the picture.
-  A 400x225 viewport at 1280x720 displays 1200x675 (3x), with borders.
+  A 400x224 viewport at 1280x720 displays 1200x675 (3x), with borders.
 - `linear`: aspect fit with smooth bilinear interpolation (optional, not
   recommended for original pixel-art appearance).
 
@@ -99,4 +99,4 @@ scene-by-scene validation and additional authored assets.
 Private-ROM build helper (Docker and official devkitPro image; unverified):
 `bash port/switch/build-with-rom.sh /path/to/your/EarthBound-USA.sfc`
 This script mounts the ROM read-only, extracts it locally, and attempts to
-build `earthbound_switch.nro`. Do not commit or upload the ROM.
+build `EarthboundSwitch.nro`. Do not commit or upload the ROM.
