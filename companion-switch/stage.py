@@ -152,15 +152,8 @@ def main():
         "Achievement profile safe replacement")
     achievements.write_text(achievements_code)
 
-    # Snapshot cache belongs to a storage channel. The default core caches
-    # the latest slot header globally; invalidate it between SD namespaces.
-    state_dump = STAGE / "src" / "core" / "state_dump.c"
-    state_code = state_dump.read_text()
-    state_code = replace_required(
-        state_code, "static void known_set(",
-        "void state_dump_forget_known(void) { s_known.valid = false; }\n\nstatic void known_set(",
-        "Switch savestate channel cache reset")
-    state_dump.write_text(state_code)
+    # The pinned native serializer has no s_known cache: its channel reads
+    # go straight to the selected backend, so no cache invalidation is needed.
 
     dst = STAGE / "port" / "switch"
     shutil.copytree(PORT, dst, ignore=shutil.ignore_patterns("build", ".DS_Store"), dirs_exist_ok=True)
@@ -228,10 +221,6 @@ void platform_audio_shutdown(void) {""",1)
     s = replace_required(s, "    platform/companion_hub.c",
                          "    platform/companion_hub.c\n    platform/companion_states.c\n    platform/companion_suspend.c",
                          "Companion snapshot backend")
-    s = replace_required(s,
-        'target_compile_definitions(earthbound_game PRIVATE EB_HAVE_SETTINGS_BACKEND=1 __SWITCH__=1)',
-        'target_compile_definitions(earthbound_game PRIVATE EB_HAVE_SETTINGS_BACKEND=1 EB_HAVE_SAVESTATE_BACKEND=1 __SWITCH__=1)',
-        "Switch engine save backend enable")
     s = replace_required(
         s, "    ../unix/platform/sdl2_save.c",
         "    platform/companion_save.c",
@@ -244,6 +233,10 @@ void platform_audio_shutdown(void) {""",1)
         s, 'target_compile_definitions(earthbound_game PRIVATE EB_HAVE_SETTINGS_BACKEND=1)',
         'target_compile_definitions(earthbound_game PRIVATE EB_HAVE_SETTINGS_BACKEND=1 __SWITCH__=1)',
         "Switch engine platform definition")
+    s = replace_required(
+        s, 'target_compile_definitions(earthbound_game PRIVATE EB_HAVE_SETTINGS_BACKEND=1 __SWITCH__=1)',
+        'target_compile_definitions(earthbound_game PRIVATE EB_HAVE_SETTINGS_BACKEND=1 EB_HAVE_SAVESTATE_BACKEND=1 __SWITCH__=1)',
+        "Switch engine save backend enable")
     # The upstream achievements patch expects ../../Achievements/Core relative to
     # native/src. In our isolated stage it lives alongside src, so override
     # the path explicitly (rather than touching the read-only native checkout).
