@@ -180,6 +180,50 @@ def main():
     s = replace_required(s, '    if (sdl_started) SDL_Quit();',
                          '    if (sdl_started) SDL_Quit();\n    if (eb_runtime_assets_ready()) eb_runtime_assets_unload();',
                          "Companion asset shutdown")
+    # libnx paths must be device-qualified; /switch/... may refer to the
+    # wrong devoptab root depending on how hbmenu launched the NRO.
+    s = s.replace('"/switch/earthbound-companion', '"sdmc:/switch/earthbound-companion')
+    s = s.replace('"/switch"', '"sdmc:/switch"')
+    s = replace_required(s, '    int exit_code = EXIT_SUCCESS;',
+                         '    int exit_code = EXIT_SUCCESS;\\n    const char *startup_error = NULL;',
+                         "boot error state")
+    s = replace_required(s, '    startup_log = fopen("sdmc:/switch/earthbound-companion/startup.log", "w");',
+                         '''    startup_log = fopen("sdmc:/switch/earthbound-companion/startup.log", "w");
+    if (!startup_log)
+        fprintf(stderr, "Cannot create Companion startup.log (errno=%d)\\n", errno);''',
+                         "SD diagnostics")
+    s = replace_required(s, '        trace("ERROR assets.pak load status: %d", (int)pak_status);',
+                         '''        trace("ERROR assets.pak load status: %d", (int)pak_status);
+        startup_error = "Companion assets.pak missing or incompatible";''',
+                         "assets startup error")
+    for marker, message in (
+        ('trace("ERROR SDL_Init: %s", SDL_GetError());', 'SDL initialization failed'),
+        ('trace("ERROR platform_video_init: %s", SDL_GetError());', 'Switch video initialization failed'),
+        ('trace("ERROR input initialization");', 'Controller initialization failed'),
+        ('trace("ERROR save initialization");', 'Save initialization failed'),
+        ('trace("ERROR timer initialization");', 'Timer initialization failed'),
+        ('trace("ERROR audio initialization: %s", SDL_GetError());', 'Audio initialization failed'),
+    ):
+        s = replace_required(s, marker, marker + '\\n        startup_error = "' + message + '";',
+                             "startup failure: " + message)
+    s = replace_required(s, '    if (startup_log) { fclose(startup_log); startup_log = NULL; }',
+                         '''    if (startup_log) { fclose(startup_log); startup_log = NULL; }
+    if (exit_code != EXIT_SUCCESS) {
+        /* Console feedback is a fallback when hbmenu suppresses stderr.
+         * SDL is already shut down so we don't compete for the display. */
+        consoleInit(NULL);
+        printf("EarthBound Companion Switch\\n\\n");
+        printf("STARTUP FAILED\\n");
+        printf("%s\\n", startup_error ? startup_error : "Unknown boot error");
+        printf("\\nCheck /switch/earthbound-companion/startup.log\\n");
+        printf("Make sure assets.pak is in the same SD folder.\\n");
+        printf("\\nReturning to Homebrew in 12 seconds.\\n");
+        consoleUpdate(NULL);
+        for (int i = 0; i < 120 && appletMainLoop(); ++i)
+            svcSleepThread(100000000ULL);
+        consoleExit(NULL);
+    }''',
+                         "screen error presentation")
     main_file.write_text(s)
 
     for name in ("platform/switch_sdl2_video.c", "platform/switch_sdl2_input.c"):
