@@ -134,6 +134,9 @@ def main():
     shutil.copy2(ROOT / "companion-switch" / "settings_backend.c",
                  dst / "platform" / "companion_settings.c")
 
+    shutil.copy2(ROOT / "companion-switch" / "msu_audio_switch.c",
+                 dst / "platform" / "companion_msu_audio.c")
+
     # Companion's engine needs dynamic, versioned asset packs. Do NOT embed
     # the vanilla binary tables from the already-compiled EarthBound port.
     cmake = dst / "CMakeLists.txt"
@@ -152,6 +155,9 @@ def main():
         s, '    platform/companion_compat.c',
         '    platform/companion_compat.c\n    platform/companion_settings.c',
         "Companion settings backend source")
+    s = replace_required(s, "    platform/companion_settings.c",
+                         "    platform/companion_settings.c\n    platform/companion_msu_audio.c",
+                         "MSU Switch PCM source")
     s = replace_required(s, "set(EB_ENABLE_AUDIO ON CACHE BOOL",
                          'set(EB_RUNTIME_ASSETS ON CACHE BOOL "Companion runtime asset packs" FORCE)\nset(EB_ENABLE_AUDIO ON CACHE BOOL',
                          "Switch CMake setup")
@@ -270,6 +276,28 @@ def main():
         consoleExit(NULL);
     }''',
                          "screen error presentation")
+    # Autodetect an MSU-1 music pack on the SD card before game starts.
+    s = replace_required(s, '#include <string.h>',
+                         '''#include <string.h>
+bool platform_audio_msu_autodetect_name(const char *dir, char *out, size_t size);
+void platform_audio_msu_load(const char *dir, const char *name);
+void platform_audio_msu_unload(void);''',
+                         "MSU Switch frontend declarations")
+    s = replace_required(s, '    trace("Entering game_init");',
+                         '''    char msu_pack_name[128] = {0};
+    const char *msu_dir = "sdmc:/switch/earthbound-companion/msu";
+    if (platform_audio_msu_autodetect_name(msu_dir, msu_pack_name,
+                                            sizeof(msu_pack_name))) {
+        platform_audio_msu_load(msu_dir, msu_pack_name);
+        trace("MSU-1 pack detected: %s", msu_pack_name);
+    } else {
+        trace("MSU-1 pack missing; standard SPC music remains active");
+    }
+    trace("Entering game_init");''',
+                         "MSU startup autodetection")
+    s = replace_required(s, '    if (audio_started) platform_audio_shutdown();',
+                         '    if (audio_started) platform_audio_shutdown();\n    platform_audio_msu_unload();',
+                         "MSU shutdown")
     main_file.write_text(s)
 
     for name in ("platform/switch_sdl2_video.c", "platform/switch_sdl2_input.c"):
