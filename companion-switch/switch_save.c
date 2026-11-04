@@ -59,7 +59,7 @@ size_t platform_save_read(void *dst, size_t offset, size_t size) {
     return got;
 }
 
-bool platform_save_write(const void *src, size_t offset, size_t size) {
+static bool save_write_impl(const void *src, size_t offset, size_t size) {
     if (!src || !size || offset > MAX_SRAM_BYTES ||
         size > MAX_SRAM_BYTES - offset) return false;
     FILE *existing = open_existing();
@@ -129,4 +129,19 @@ read_error:
     fprintf(stderr, "save: existing SRAM unreadable (errno %d)\n", errno);
     fclose(existing);
     return false;
+}
+
+/* Switch-only diagnostics: verify whether Redux's actual in-game SAVE
+ * command reaches the battery SRAM API. This does not log game content.
+ * Do not interpret a menu confirm sound as proof of a durable save. */
+bool platform_save_write(const void *src, size_t offset, size_t size) {
+    bool ok = save_write_impl(src, offset, size);
+    FILE *log = fopen("sdmc:/switch/earthbound-companion/save-debug.log", "a");
+    if (log) {
+        fprintf(log, "SRAM write offset=%lu length=%lu status=%s errno=%d\n",
+                (unsigned long)offset, (unsigned long)size,
+                ok ? "OK" : "FAILED", ok ? 0 : errno);
+        fclose(log);
+    }
+    return ok;
 }
