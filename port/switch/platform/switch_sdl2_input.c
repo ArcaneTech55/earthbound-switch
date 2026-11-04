@@ -1,6 +1,7 @@
 #include "platform/platform.h"
 #include "../input_mapping.h"
 #include <SDL.h>
+#include <stdio.h>
 #include "game/game_state.h"
 #include "game/display_text.h"
 #include "include/pad.h"
@@ -31,11 +32,19 @@ static void heal_party(void) {
         for (unsigned j = 0; j < sizeof(p->afflictions); ++j) p->afflictions[j] = 0;
     }
 }
+static void save_scaling(void) {
+    FILE *file=fopen("/switch/earthbound-switch/scaling.cfg", "w");
+    if(!file)return;
+    const char *names[]={"nearest","integer","linear"};
+    fprintf(file,"%s\\n",names[eb_switch_menu_scale%3]);
+    fclose(file);
+}
 static void menu_action(void) {
     switch (eb_switch_menu_selected) {
         case 0:
             eb_switch_menu_scale = (eb_switch_menu_scale + 1) % 3;
             eb_switch_video_set_scale(eb_switch_menu_scale);
+            save_scaling();
             break;
         case 1:
             if(!eb_switch_menu_instant_text) {
