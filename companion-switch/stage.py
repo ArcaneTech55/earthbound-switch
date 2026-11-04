@@ -116,6 +116,22 @@ def main():
     )
     runtime.write_text(runtime_c)
 
+    # The achievement adapter was wired only by desktop main.c. Its
+    # POSIX directory builder rejects the libnx "sdmc:" device prefix.
+    # Build an SD-friendly path and skip desktop flock() on single-app Switch.
+    achievements = STAGE / "src" / "game" / "companion_achievements.c"
+    achievements_code = achievements.read_text()
+    achievements_code = replace_required(
+        achievements_code,
+        "if (!(i==2 && p[1]==':') && p[i-1]!='/' && p[i-1]!='\\\\' && !directory_one(p))",
+        "if (!(i==2 && p[1]==':') && !(i==5 && strncmp(p, \"sdmc:\", 5)==0) && p[i-1]!='/' && p[i-1]!='\\\\' && !directory_one(p))",
+        "Switch achievement SD device root")
+    achievements_code = replace_required(
+        achievements_code, "if(flock(lock_handle,LOCK_EX|LOCK_NB)!=0){close_store();return false;}",
+        "#ifndef __SWITCH__\\n if(flock(lock_handle,LOCK_EX|LOCK_NB)!=0){close_store();return false;}\\n#endif",
+        "Switch achievement profile lock")
+    achievements.write_text(achievements_code)
+
     dst = STAGE / "port" / "switch"
     shutil.copytree(PORT, dst, ignore=shutil.ignore_patterns("build", ".DS_Store"), dirs_exist_ok=True)
 
@@ -161,6 +177,11 @@ def main():
     s = replace_required(s, "set(EB_ENABLE_AUDIO ON CACHE BOOL",
                          'set(EB_RUNTIME_ASSETS ON CACHE BOOL "Companion runtime asset packs" FORCE)\nset(EB_ENABLE_AUDIO ON CACHE BOOL',
                          "Switch CMake setup")
+    # Only game core knows that libnx is the target for SD profile storage.
+    s = replace_required(
+        s, 'target_compile_definitions(earthbound_game PRIVATE EB_HAVE_SETTINGS_BACKEND=1)',
+        'target_compile_definitions(earthbound_game PRIVATE EB_HAVE_SETTINGS_BACKEND=1 __SWITCH__=1)',
+        "Switch engine platform definition")
     # The upstream achievements patch expects ../../Achievements/Core relative to
     # native/src. In our isolated stage it lives alongside src, so override
     # the path explicitly (rather than touching the read-only native checkout).
@@ -276,6 +297,20 @@ def main():
         consoleExit(NULL);
     }''',
                          "screen error presentation")
+    # Activate achievements for real gameplay; the desktop main used to
+    # do this, but the standalone Switch main never did.
+    s = replace_required(s, '#include "game/settings.h"',
+                         '#include "game/settings.h"\\n#include "game/eb_achievements.h"',
+                         "Switch achievements header")
+    s = replace_required(s, '    trace("Entering game_init");',
+                         '''    if (eb_achievements_init(
+            "sdmc:/switch/earthbound-companion/achievements", false)) {
+        trace("Achievements initialized and profile is writable");
+    } else {
+        trace("WARNING achievement profile initialization failed");
+    }
+    trace("Entering game_init");''',
+                         "Switch achievement initialization")
     # Autodetect an MSU-1 music pack on the SD card before game starts.
     s = replace_required(s, '#include <string.h>',
                          '''#include <string.h>
