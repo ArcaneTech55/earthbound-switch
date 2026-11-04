@@ -160,7 +160,7 @@ def main():
     # Companion is a runtime-pak engine. Initialize the verified asset table
     # before game_init(); the old vanilla frontend never needed this step.
     s = replace_required(s, '#include "game_main.h"',
-                         '#include "game_main.h"\\n#include "data/runtime_assets.h"',
+                         '#include "game_main.h"\n#include "data/runtime_assets.h"',
                          "Companion asset loader header")
     s = replace_required(s, '    trace("Initializing SDL subsystems");',
                          '''    trace("Loading Companion runtime assets");
@@ -178,7 +178,7 @@ def main():
     trace("Initializing SDL subsystems");''',
                          "Companion pre-game asset load")
     s = replace_required(s, '    if (sdl_started) SDL_Quit();',
-                         '    if (sdl_started) SDL_Quit();\\n    if (eb_runtime_assets_ready()) eb_runtime_assets_unload();',
+                         '    if (sdl_started) SDL_Quit();\n    if (eb_runtime_assets_ready()) eb_runtime_assets_unload();',
                          "Companion asset shutdown")
     main_file.write_text(s)
 
