@@ -15,11 +15,11 @@
 #define MAX_SNAPSHOT_BYTES (2u * 1024u * 1024u)
 
 static FILE *writers[2];
-static int current_group;     /* 0=manual slots, 1=rewind ring */
+static int current_group;     /* 0=manual slots, 1=rewind ring, 2=engine quicksave */
 static int current_number;
 
 void companion_state_channel(int group, int number) {
-    if (group < 0 || group > 1 || number < 0 || number >= 16) return;
+    if (group < 0 || group > 2 || number < 0 || number >= 16) return;
     /* Call only at root-loop boundary: no active writer may be switched. */
     if (writers[0] || writers[1]) return;
     current_group=group;
@@ -27,7 +27,7 @@ void companion_state_channel(int group, int number) {
 }
 static bool state_path(char *dst,size_t cap,int slot) {
     int n=snprintf(dst,cap,"%s/%s%d.bin.%d",STATE_DIR,
-                   current_group?"rewind":"manual",current_number,slot);
+                   current_group==2?"quick":(current_group==1?"rewind":"manual"),current_number,slot);
     return n>0 && (size_t)n<cap;
 }
 bool companion_state_storage_init(void) {
