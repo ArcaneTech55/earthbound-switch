@@ -32,6 +32,8 @@ static void read_presentation_settings(void) {
     if(fgets(mode,sizeof(mode),f)) {
         mode[strcspn(mode,"\r\n")]=0;
         scale_mode=eb_scale_mode_parse(mode);
+        eb_switch_menu_scale = scale_mode == EB_SCALE_INTEGER ? 1 :
+                               scale_mode == EB_SCALE_ASPECT_LINEAR ? 2 : 0;
     }
     fclose(f);
 }
