@@ -152,6 +152,16 @@ def main():
         "Achievement profile safe replacement")
     achievements.write_text(achievements_code)
 
+    # Snapshot cache belongs to a storage channel. The default core caches
+    # the latest slot header globally; invalidate it between SD namespaces.
+    state_dump = STAGE / "src" / "core" / "state_dump.c"
+    state_code = state_dump.read_text()
+    state_code = replace_required(
+        state_code, "static void known_set(",
+        "void state_dump_forget_known(void) { s_known.valid = false; }\\n\\nstatic void known_set(",
+        "Switch savestate channel cache reset")
+    state_dump.write_text(state_code)
+
     dst = STAGE / "port" / "switch"
     shutil.copytree(PORT, dst, ignore=shutil.ignore_patterns("build", ".DS_Store"), dirs_exist_ok=True)
 
