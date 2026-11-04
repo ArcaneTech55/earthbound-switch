@@ -421,7 +421,7 @@ bool companion_suspend_action(int,int,const uint16_t*,int,int);''',
         game_loop_step();''',
                          "Companion pause and suspend command dispatch")
     s = replace_required(s, '        host_root_boundary();',
-                         '        host_root_boundary();\\n        companion_suspend_frame_tick();',
+                         '        host_root_boundary();\n        companion_suspend_frame_tick();',
                          "Companion rewind history capture")
     main_file.write_text(s)
 
@@ -590,7 +590,7 @@ static uint16_t menu_previous_pad;''',
         '    menu_combo_latched = combo;',
         "Menu combo latch")
     input_text = replace_required(
-        input_text, '    if (eb_switch_menu_open) {\\n        uint16_t pressed = eb_switch_pad_pressed(held, next);',
+        input_text, '    if (eb_switch_menu_open) {\n        uint16_t pressed = eb_switch_pad_pressed(held, next);',
         '''    if (eb_switch_menu_open) {
         uint16_t pressed = eb_switch_pad_pressed(menu_previous_pad, next);
         menu_previous_pad = next;''',
@@ -624,6 +624,11 @@ static uint16_t menu_previous_pad;''',
     return 0;
 }''',
         "Companion Hub fast-forward auxiliary button")
+    input_text = replace_required(
+        input_text, '    held = next;',
+        '''    if (!eb_switch_menu_open) menu_previous_pad=0;
+    held = next;''',
+        "Companion menu button release")
     input_file.write_text(input_text)
 
     # Wire the vanilla settings overlay's scale callback to the actual
