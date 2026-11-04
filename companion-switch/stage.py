@@ -135,21 +135,20 @@ def main():
         achievements_code, "if(flock(lock_handle,LOCK_EX|LOCK_NB)!=0){close_store();return false;}",
         "#ifndef __SWITCH__\n if(flock(lock_handle,LOCK_EX|LOCK_NB)!=0){close_store();return false;}\n#endif",
         "Switch achievement profile lock")
-    # Some libnx/FAT implementations cannot rename over an existing file.
-    # Preserve the existing achievement profile in a backup first.
+    # If SD rename cannot overwrite, keep the current profile in a backup.
     achievements_code = replace_required(
         achievements_code,
         "ok=rename(temp,profile)==0;",
         """if(rename(temp,profile)==0) {
-+   ok=true;
-+  } else {
-+   char backup[4102]; snprintf(backup,sizeof(backup),"%s.bak",profile);
-+   remove(backup);
-+   if(rename(profile,backup)==0) {
-+    ok=rename(temp,profile)==0;
-+    if(!ok)rename(backup,profile);
-+   } else ok=false;
-+  }""".replace("\\n+", "\\n"),
+   ok=true;
+  } else {
+   char backup[4102]; snprintf(backup,sizeof(backup),"%s.bak",profile);
+   remove(backup);
+   if(rename(profile,backup)==0) {
+    ok=rename(temp,profile)==0;
+    if(!ok)rename(backup,profile);
+   } else ok=false;
+  }""",
         "Achievement profile safe replacement")
     achievements.write_text(achievements_code)
 
