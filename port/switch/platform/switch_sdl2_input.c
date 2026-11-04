@@ -1,6 +1,8 @@
 #include "platform/platform.h"
 #include "../input_mapping.h"
 #include <SDL.h>
+#include "game/game_state.h"
+#include "include/pad.h"
 
 /* SDL2 game controller driver for Nintendo Switch. SDL2 maps physical
  * controls to the standard controller button layout. The Nintendo button
@@ -9,6 +11,42 @@
 static SDL_GameController *controller;
 static uint16_t held,previous;
 static bool quit_requested;
+/* ZL + PLUS opens the native settings and cheats overlay. */
+bool eb_switch_menu_open = false;
+int eb_switch_menu_selected = 0;
+int eb_switch_menu_scale = 0; /* nearest, integer, linear */
+bool eb_switch_menu_instant_text = false;
+bool eb_switch_menu_auto_heal = false;
+static bool menu_combo_latched = false;
+static uint32_t frame_counter = 0;
+extern void eb_switch_video_set_scale(int mode);
+static void heal_party(void) {
+    for (int i = 0; i < 4; ++i) {
+        CharStruct *p = &party_characters[i];
+        if (!p->max_hp) continue;
+        p->current_hp = p->current_hp_target = p->max_hp;
+        p->current_pp = p->current_pp_target = p->max_pp;
+        for (unsigned j = 0; j < sizeof(p->afflictions); ++j) p->afflictions[j] = 0;
+    }
+}
+static void menu_action(void) {
+    switch (eb_switch_menu_selected) {
+        case 0:
+            eb_switch_menu_scale = (eb_switch_menu_scale + 1) % 3;
+            eb_switch_video_set_scale(eb_switch_menu_scale);
+            break;
+        case 1: eb_switch_menu_instant_text = !eb_switch_menu_instant_text; break;
+        case 2: eb_switch_menu_auto_heal = !eb_switch_menu_auto_heal; break;
+        case 3: heal_party(); break;
+        case 4:
+            if (game_state.money_carried < 9999000)
+                game_state.money_carried += 1000;
+            else game_state.money_carried = 9999999;
+            break;
+        case 5: eb_switch_menu_open = false; break;
+    }
+}
+
 bool platform_headless=false;
 bool platform_skip_intro=false;
 int platform_max_frames=0;
@@ -61,7 +99,31 @@ void platform_input_poll(void) {
             if(SDL_GameControllerGetButton(controller,mapping[i].button))
                 buttons|=mapping[i].bit;
     }
-    held=eb_switch_map_pad(buttons);
+    ++frame_counter;
+    bool combo = controller &&
+        SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_LEFTSTICK) &&
+        SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_START);
+    /* Also support ZL + PLUS; left-stick click + PLUS is a fallback. */
+    if (controller) combo = combo ||
+        (SDL_GameControllerGetAxis(controller, SDL_CONTROLLER_AXIS_TRIGGERLEFT) > 16000 &&
+         SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_START));
+    if (combo && !menu_combo_latched) {
+        eb_switch_menu_open = !eb_switch_menu_open;
+        eb_switch_menu_selected = 0;
+    }
+    menu_combo_latched = combo;
+    uint16_t next = eb_switch_map_pad(buttons);
+    if (eb_switch_menu_open) {
+        uint16_t pressed = eb_switch_pad_pressed(held, next);
+        if (pressed & PAD_UP) eb_switch_menu_selected = (eb_switch_menu_selected + 5) % 6;
+        if (pressed & PAD_DOWN) eb_switch_menu_selected = (eb_switch_menu_selected + 1) % 6;
+        if (pressed & PAD_A) menu_action();
+        if (pressed & PAD_B) eb_switch_menu_open = false;
+        next = 0; /* Menu buttons must not also control EarthBound. */
+    } else if (eb_switch_menu_auto_heal && frame_counter % 60 == 0) {
+        heal_party();
+    }
+    held = next;
 }
 uint16_t platform_input_get_pad(void) { return held; }
 uint16_t platform_input_get_pad_new(void) { return eb_switch_pad_pressed(previous,held); }
