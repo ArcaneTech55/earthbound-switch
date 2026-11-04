@@ -36,7 +36,7 @@ static void save_scaling(void) {
     FILE *file=fopen("/switch/earthbound-switch/scaling.cfg", "w");
     if(!file)return;
     const char *names[]={"nearest","integer","linear"};
-    fprintf(file,"%s\\n",names[eb_switch_menu_scale%3]);
+    fprintf(file,"%s\n",names[eb_switch_menu_scale%3]);
     fclose(file);
 }
 static void menu_action(void) {
