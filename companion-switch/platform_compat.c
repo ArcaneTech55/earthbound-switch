@@ -2,26 +2,12 @@
  * Switch implementations of Companion's platform extension hooks.
  * These are separate from the ordinary Switch SDL video/input/audio backends.
  *
- * Not all desktop features are implemented on libnx. In particular, MSU1
- * PCM packs and desktop diagnostic captures are disabled explicitly rather
- * than pretending those features work. The SPC700 audio path remains active.
+ * PC-only diagnostic captures are not implemented. MSU-1 playback is supplied
+ * separately by companion_msu_audio.c, leaving this file for non-audio hooks.
  */
 #include "platform/platform.h"
 #include <stddef.h>
 #include <stdint.h>
-
-/* No MSU1 pack is loaded by the Switch frontend. Avoid suppressing the
- * original SPC700 music whenever a high-quality track is requested. */
-bool platform_audio_msu_play(uint16_t track_id) {
-    (void)track_id;
-    return false;
-}
-void platform_audio_msu_stop(void) {}
-bool platform_audio_msu_is_loaded(void) { return false; }
-void platform_audio_msu_mix(int16_t *out, int frames, int out_rate) {
-    (void)out; (void)frames; (void)out_rate;
-}
-void pc_msu_command(uint8_t command) { (void)command; }
 
 /* The SDL Switch renderer is not the desktop post-processing renderer.
  * The standard frame presentation is still driven by its end_frame hook. */
