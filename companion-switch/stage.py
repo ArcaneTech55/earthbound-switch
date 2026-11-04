@@ -646,6 +646,15 @@ static uint16_t menu_previous_pad;''',
     uint16_t next = eb_switch_map_pad(buttons);''',
         "Engine quick-save/load Switch controller shortcuts")
     input_text = replace_required(
+        input_text, '#include "game_main.h"',
+        '#include "game_main.h"\\nvoid companion_state_channel(int group,int number);',
+        "Engine quicksave channel declaration")
+    input_text = replace_required(
+        input_text, '    uint16_t next = eb_switch_map_pad(buttons);',
+        '''    if (switch_quicksave_aux) companion_state_channel(2,0);
+    uint16_t next = eb_switch_map_pad(buttons);''',
+        "Engine quicksave channel selection")
+    input_text = replace_required(
         input_text, '    if (eb_switch_menu_open) {\n        uint16_t pressed = eb_switch_pad_pressed(held, next);',
         '''    if (eb_switch_menu_open) {
         uint16_t pressed = eb_switch_pad_pressed(menu_previous_pad, next);
