@@ -177,6 +177,10 @@ def main():
                  dst / "platform" / "companion_msu_audio.c")
     shutil.copy2(ROOT / "companion-switch" / "companion_hub.c",
                  dst / "platform" / "companion_hub.c")
+    shutil.copy2(ROOT / "companion-switch" / "switch_states.c",
+                 dst / "platform" / "companion_states.c")
+    shutil.copy2(ROOT / "companion-switch" / "suspend_switch.c",
+                 dst / "platform" / "companion_suspend.c")
 
     # Companion's engine needs dynamic, versioned asset packs. Do NOT embed
     # the vanilla binary tables from the already-compiled EarthBound port.
@@ -202,6 +206,13 @@ def main():
     s = replace_required(s, "    platform/companion_msu_audio.c",
                          "    platform/companion_msu_audio.c\n    platform/companion_hub.c",
                          "Companion Hub SDL source")
+    s = replace_required(s, "    platform/companion_hub.c",
+                         "    platform/companion_hub.c\n    platform/companion_states.c\n    platform/companion_suspend.c",
+                         "Companion snapshot backend")
+    s = replace_required(s,
+        'target_compile_definitions(earthbound_game PRIVATE EB_HAVE_SETTINGS_BACKEND=1 __SWITCH__=1)',
+        'target_compile_definitions(earthbound_game PRIVATE EB_HAVE_SETTINGS_BACKEND=1 EB_HAVE_SAVESTATE_BACKEND=1 __SWITCH__=1)',
+        "Switch engine save backend enable")
     s = replace_required(
         s, "    ../unix/platform/sdl2_save.c",
         "    platform/companion_save.c",
