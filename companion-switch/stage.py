@@ -129,7 +129,7 @@ def main():
     # libnx doesn't expose desktop flock headers.
     achievements_code = replace_required(
         achievements_code, "#include <sys/file.h>",
-        "#ifndef __SWITCH__\\n#include <sys/file.h>\\n#endif",
+        "#ifndef __SWITCH__\n#include <sys/file.h>\n#endif",
         "Switch achievement locking headers")
     achievements_code = replace_required(
         achievements_code, "if(flock(lock_handle,LOCK_EX|LOCK_NB)!=0){close_store();return false;}",
