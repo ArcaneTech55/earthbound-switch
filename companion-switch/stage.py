@@ -41,10 +41,11 @@ def main():
     # Companion's diagnostic self-tests use fprintf(stderr, ...); include the
     # standard declaration only in the isolated generated copy. Do not alter
     # the upstream source checkout or remove the self-tests.
-    battle = STAGE / "src" / "game" / "battle.c"
-    battle_source = battle.read_text()
-    if "#include <stdio.h>" not in battle_source:
-        battle.write_text("#include <stdio.h>\n" + battle_source)
+    for name in ("battle.c", "battle_ui.c"):
+        source_file = STAGE / "src" / "game" / name
+        source_text = source_file.read_text()
+        if "#include <stdio.h>" not in source_text:
+            source_file.write_text("#include <stdio.h>\n" + source_text)
 
     dst = STAGE / "port" / "switch"
     shutil.copytree(PORT, dst, ignore=shutil.ignore_patterns("build", ".DS_Store"), dirs_exist_ok=True)
