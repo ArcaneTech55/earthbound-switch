@@ -124,7 +124,7 @@ def main():
     audio_source = STAGE / "port" / "unix" / "platform" / "sdl2_audio.c"
     audio_text = audio_source.read_text()
     if "#include <stdio.h>" not in audio_text:
-        audio_source.write_text("#include <stdio.h>\\n" + audio_text)
+        audio_source.write_text("#include <stdio.h>\n" + audio_text)
 
     # Link the Companion-only platform extension functions missing from the
     # vanilla Switch frontend, without modifying the upstream engine sources.
