@@ -12,6 +12,35 @@ extern bool eb_switch_menu_open;
 extern int eb_switch_menu_selected;
 extern int eb_switch_menu_scale;
 extern bool eb_switch_menu_fast_forward;
+extern int companion_hub_slot;
+extern int companion_rewind_available(void);
+extern bool companion_suspend_slot_exists(int);
+extern bool companion_suspend_preview(int,uint16_t*);
+extern char companion_hub_status[48];
+static SDL_Texture *preview_textures[4];
+static bool preview_checked[4];
+static uint16_t preview_pixels[160*90];
+void companion_hub_invalidate_previews(void) {
+    for(int i=0;i<4;i++) {
+        if(preview_textures[i])SDL_DestroyTexture(preview_textures[i]);
+        preview_textures[i]=NULL;preview_checked[i]=false;
+    }
+}
+static SDL_Texture *load_preview(SDL_Renderer *r,int slot){
+    if(slot<0||slot>=4)return NULL;
+    if(preview_checked[slot])return preview_textures[slot];
+    preview_checked[slot]=true;
+    if(!companion_suspend_preview(slot,preview_pixels))return NULL;
+    SDL_Texture *t=SDL_CreateTexture(r,SDL_PIXELFORMAT_BGR565,
+                                   SDL_TEXTUREACCESS_STATIC,160,90);
+    if(!t)return NULL;
+    if(SDL_UpdateTexture(t,NULL,preview_pixels,160*(int)sizeof(uint16_t))!=0){
+        SDL_DestroyTexture(t);return NULL;
+    }
+    SDL_SetTextureScaleMode(t,SDL_ScaleModeLinear);
+    preview_textures[slot]=t;
+    return t;
+}
 
 typedef struct { char c; unsigned char row[7]; } Glyph;
 static const Glyph glyphs[]={
@@ -155,43 +184,49 @@ void companion_hub_draw(SDL_Renderer *r,int width,int height,
     text(r,52,43,1,"EARTHBOUND COMPANION",muted);
 
     rect(r,471,36,1,445,(SDL_Color){217,217,217,165});
-    const char *options[6]={
+    const char *options[8]={
         "CONTINUE",
+        "CREATE POINT",
+        "LOAD POINT",
+        "REWIND 3 SEC",
         "SMOOTH PIXELS",
         "SCANLINES",
         "SCALE MODE",
-        "FAST FORWARD",
         "CLOSE MENU"
     };
-    const int left_y=170;
-    const int line_step=49;
-    for(int i=0;i<6;i++) {
-        int y=left_y+i*line_step;
-        if(eb_switch_menu_selected==i){
-            rect(r,114,y-12,357,39,(SDL_Color){251,251,251,255});
-            text(r,155,y,2,options[i],(SDL_Color){80,82,87,255});
+    for(int i=0;i<8;i++) {
+        int y=150+i*39;
+        if(eb_switch_menu_selected==i) {
+            rect(r,114,y-9,357,34,(SDL_Color){249,249,249,255});
+            text(r,152,y,2,options[i],(SDL_Color){69,72,76,255});
         } else {
-            text(r,155,y,2,options[i],white);
+            text(r,152,y,2,options[i],white);
         }
     }
-    /* Four outlined status slots, like screenshot save cards, but these
-     * display real settings until suspend snapshots are implemented. */
-    const char*headings[4]={"PIXEL FILTER","SCANLINES","SCREEN MODE","PLAYBACK"};
-    const char*values[4]={
-        engine_fx_antialiasing?"SMOOTH":"SHARP",
-        engine_fx_scanlines?"ON":"OFF",
-        eb_switch_menu_scale==1?"INTEGER":eb_switch_menu_scale==2?"LINEAR":"ASPECT",
-        eb_switch_menu_fast_forward?"FAST":"NORMAL"
-    };
+    /* Right-side cards are real suspend thumbnails. The selected slot is
+     * highlighted; empty slots have a calm blank placeholder. */
     for(int i=0;i<4;i++) {
         int y=71+i*101;
-        outline(r,518,y,320,81,(SDL_Color){234,234,234,205});
-        rect(r,520,y+2,101,77,(SDL_Color){31,36,42,140});
-        outline(r,522,y+4,97,73,(SDL_Color){209,213,219,105});
-        text(r,532,y+27,2,i==0?"FX":i==1?"CRT":i==2?"TV":"SPD",muted);
-        text(r,648,y+18,2,headings[i],white);
-        text(r,648,y+47,2,values[i],muted);
+        bool selected=companion_hub_slot==i;
+        outline(r,518,y,320,81,
+                selected?(SDL_Color){255,255,255,255}:(SDL_Color){225,225,225,160});
+        rect(r,520,y+2,101,77,(SDL_Color){20,24,30,180});
+        SDL_Texture *preview=load_preview(r,i);
+        if(preview) {
+            SDL_Rect area={522,y+12,97,55};
+            SDL_RenderCopy(r,preview,NULL,&area);
+        } else {
+            text(r,528,y+31,2,"EMPTY",faded);
+        }
+        text(r,640,y+14,2,i==0?"POINT 1":i==1?"POINT 2":i==2?"POINT 3":"POINT 4",white);
+        text(r,640,y+44,2,companion_suspend_slot_exists(i)?"SAVED":"NO SNAPSHOT",muted);
+        if(selected)rect(r,831,y,7,81,(SDL_Color){255,255,255,255});
     }
+    text(r,535,459,2,"LEFT / RIGHT CHOOSE POINT",muted);
+    if(companion_hub_status[0])
+        text(r,535,480,2,companion_hub_status,white);
+    else if(companion_rewind_available()>0)
+        text(r,535,480,2,"REWIND READY",muted);
     /* Rounded controller symbols aren't part of the engine's tiny bitmap
      * font; neutral square keycaps give a similar understated console vibe. */
     rect(r,632,498,23,23,(SDL_Color){251,251,251,240});
