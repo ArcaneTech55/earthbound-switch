@@ -274,6 +274,68 @@ def main():
         file = dst / name
         file.write_text(file.read_text().replace("/switch/earthbound-switch/", "/switch/earthbound-companion/"))
 
+    # Implement basic Companion Config effects using the Switch SDL renderer.
+    video = dst / "platform" / "switch_sdl2_video.c"
+    video_text = video.read_text()
+    video_text = replace_required(
+        video_text, '#include "platform/platform.h"',
+        '#include "platform/platform.h"\\n#include "game/settings.h"',
+        "Switch video settings header")
+    video_text = replace_required(
+        video_text, '    eb_switch_scene_art_frame(frame,EB_VIEWPORT_WIDTH,EB_VIEWPORT_HEIGHT);',
+        '''    eb_switch_scene_art_frame(frame,EB_VIEWPORT_WIDTH,EB_VIEWPORT_HEIGHT);
+    if (engine_fx_scanlines) {
+        for (int y = 1; y < EB_VIEWPORT_HEIGHT; y += 2) {
+            for (int x = 0; x < EB_VIEWPORT_WIDTH; ++x) {
+                pixel_t *px = &frame[(size_t)y * EB_VIEWPORT_WIDTH + x];
+                unsigned rgb = pixel_to_rgb888(*px);
+                *px = PIXEL_RGB(((rgb >> 16) & 255u) * 3u / 4u,
+                                ((rgb >> 8) & 255u) * 3u / 4u,
+                                (rgb & 255u) * 3u / 4u);
+            }
+        }
+    }
+    SDL_SetTextureScaleMode(frame_texture,
+        engine_fx_antialiasing ? SDL_ScaleModeLinear : SDL_ScaleModeNearest);''',
+        "Switch Config scanlines and filter")
+    video_text = replace_required(
+        video_text, '    SDL_RenderCopy(renderer,frame_texture,NULL,&dst);',
+        '''    SDL_Rect src_rect = {0, 0, EB_VIEWPORT_WIDTH, EB_VIEWPORT_HEIGHT};
+    if (engine_aspect_ratio == ASPECT_RATIO_4_3 &&
+        EB_VIEWPORT_WIDTH > SNES_WIDTH) {
+        src_rect.x = (EB_VIEWPORT_WIDTH - SNES_WIDTH) / 2;
+        src_rect.w = SNES_WIDTH;
+        EbWsRect fitted = eb_scale_destination(
+            (EbWsSize){src_rect.w,src_rect.h},
+            (EbWsSize){width,height},scale_mode);
+        dst = (SDL_Rect){fitted.x,fitted.y,fitted.width,fitted.height};
+    }
+    SDL_RenderCopy(renderer,frame_texture,&src_rect,&dst);''',
+        "Switch Config 4:3 aspect ratio")
+    video.write_text(video_text)
+
+    # In-game Alternate Controls must change Nintendo face-button mappings.
+    input_file = dst / "platform" / "switch_sdl2_input.c"
+    input_text = input_file.read_text()
+    input_text = replace_required(
+        input_text, '#include "game/game_state.h"',
+        '#include "game/game_state.h"\\n#include "game/settings.h"',
+        "Switch alternate controls header")
+    input_text = replace_required(
+        input_text, '    uint16_t next = eb_switch_map_pad(buttons);',
+        '''    if (engine_alt_controls) {
+        uint32_t face = 0;
+        if (buttons & EB_SW_BTN_A) face |= EB_SW_BTN_B;
+        if (buttons & EB_SW_BTN_B) face |= EB_SW_BTN_A;
+        if (buttons & EB_SW_BTN_X) face |= EB_SW_BTN_Y;
+        if (buttons & EB_SW_BTN_Y) face |= EB_SW_BTN_X;
+        buttons = (buttons & ~(EB_SW_BTN_A | EB_SW_BTN_B |
+                                EB_SW_BTN_X | EB_SW_BTN_Y)) | face;
+    }
+    uint16_t next = eb_switch_map_pad(buttons);''',
+        "Switch alternate button mapping")
+    input_file.write_text(input_text)
+
     # Wire the vanilla settings overlay's scale callback to the actual
     # Switch presentation state, instead of leaving a dangling symbol.
     video = dst / "platform" / "switch_sdl2_video.c"
