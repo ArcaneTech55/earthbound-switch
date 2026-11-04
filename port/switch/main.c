@@ -19,6 +19,7 @@
 #include "game_main.h"
 #include "platform/platform.h"
 
+extern bool eb_switch_menu_open;
 /* Path selection provided by port/unix/platform/sdl2_save.c. */
 extern void platform_save_set_path(const char *path);
 
@@ -159,7 +160,7 @@ int main(int argc, char **argv) {
     while (appletMainLoop() && !platform_input_quit_requested()) {
         if (frame_count == 0) trace("First game loop frame");
         if (++frame_count == 60) trace("60 game loop frames completed");
-        game_loop_step();
+        if (!eb_switch_menu_open) game_loop_step();
         host_process_frame();
         host_root_boundary();
     }
