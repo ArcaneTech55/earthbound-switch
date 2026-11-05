@@ -18,11 +18,23 @@ EXPECTED_SHA1=6b47bb75d16514b6a476aa0c73a683a2a4c18765
 for command in git python3 make shasum; do
   command -v "$command" >/dev/null || { echo "Missing tool: $command" >&2; exit 1; }
 done
+mkdir -p "$WORK"
 ROM_SHA1="$(shasum -a 1 "$ROM" | awk '{print $1}')"
 if [[ "$ROM_SHA1" != "$EXPECTED_SHA1" ]]; then
   echo "Unsupported ROM SHA1: $ROM_SHA1" >&2
   echo "Expected original unheadered Super Mario World (USA): $EXPECTED_SHA1" >&2
   exit 1
+fi
+
+# Verify the 16:9 viewport math before invoking the Switch toolchain.
+# This does not enable widescreen rendering until the PPU/HUD work is complete.
+if command -v cc >/dev/null 2>&1; then
+  cc -std=c99 -Wall -Wextra -Werror -pedantic \
+    "$SCRIPT_DIR/widescreen/viewport_test.c" \
+    -o "$WORK/viewport_test"
+  "$WORK/viewport_test"
+else
+  echo "Warning: C compiler unavailable; skipping widescreen geometry test." >&2
 fi
 
 export DEVKITPRO="${DEVKITPRO:-/opt/devkitpro}"
