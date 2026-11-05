@@ -100,3 +100,27 @@ Private-ROM build helper (Docker and official devkitPro image; unverified):
 `bash port/switch/build-with-rom.sh /path/to/your/EarthBound-USA.sfc`
 This script mounts the ROM read-only, extracts it locally, and attempts to
 build `EarthboundSwitch.nro`. Do not commit or upload the ROM.
+
+## Native ShrineFox-inspired trainer (development branch)
+
+Branch: `feature/shrinefox-native-menu` (based on
+`fix/switch-sram-telephone-save`). This is an **independent C reimplementation
+of an in-game menu**, not the original CoilSnake ROM patch. ShrineFox's
+GPL-3.0 project is the feature reference; no original mod code or copyrighted
+game assets were copied into this implementation.
+
+Open/close the overlay with **ZL + Plus** (or **left-stick click + Plus**).
+Use **D-pad Up/Down**, **A** to select, and **B** to close. The game input
+is suppressed while the overlay is visible. The overlay is drawn by the
+Switch SDL renderer and does not require SDL_ttf or external fonts.
+
+First-stage actions: change video scaling; instant-text and auto-heal
+toggles (instant text remains a placeholder until connected to the game's
+text engine); heal party and clear afflictions; add 1000 cash; deposit or
+withdraw 1000; restore HP/PP without removing afflictions; close.
+
+**Not yet implemented:** ShrineFox's party editing, items, teleportation,
+BGM, battle/event launching, Chaos Mode, and key-item mechanics. This
+is not feature parity with the original mod, and it is not a tested
+release. On-device build, visual, menu navigation, gameplay and save
+validation are required. Back up SRAM before testing cheats.
