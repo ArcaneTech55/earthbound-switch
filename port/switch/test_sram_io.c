@@ -20,6 +20,11 @@ int __wrap_rename(const char *from, const char *to) {
 }
 #endif
 
+#ifdef EB_TEST_FAIL_FSYNC
+/* Simulate a physical flush failure. The live SRAM must remain untouched. */
+int __wrap_fsync(int fd) { (void)fd; errno = EIO; return -1; }
+#endif
+
 int main(int argc, char **argv) {
     if (argc == 3 && strcmp(argv[1], "--verify") == 0) {
         platform_save_set_path(argv[2]);
@@ -37,6 +42,13 @@ int main(int argc, char **argv) {
     snprintf(path, sizeof(path), "%s/earthbound.srm", dir);
     platform_save_set_path(path);
     assert(platform_save_init());
+#ifdef EB_TEST_FAIL_FSYNC
+    unsigned char data[1280] = { 1 };
+    assert(!platform_save_write(data, 0, sizeof(data)));
+    assert(access(path, F_OK) != 0);
+    rmdir(dir);
+    return 0;
+#endif
     unsigned char first[1280], second[1280], out[1280];
     memset(first, 0x5a, sizeof(first));
     memset(second, 0xa5, sizeof(second));
