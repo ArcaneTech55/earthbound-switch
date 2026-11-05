@@ -17,6 +17,7 @@
 #include <string.h>
 
 #include "game_main.h"
+#include "core/mode_stack.h"
 #include "platform/platform.h"
 
 /* Path selection provided by port/unix/platform/sdl2_save.c. */
@@ -159,7 +160,16 @@ int main(int argc, char **argv) {
     while (appletMainLoop() && !platform_input_quit_requested()) {
         if (frame_count == 0) trace("First game loop frame");
         if (++frame_count == 60) trace("60 game loop frames completed");
+        /* Sparse progress markers distinguish a true engine hang from a
+         * telephone dialogue waiting for input. Never log every frame. */
+        if (frame_count % 600 == 0 && g_mode_stack.depth > 0) {
+            unsigned top = g_mode_stack.depth - 1;
+            trace("Frame %lu begin: depth=%u mode=%u", frame_count,
+                  (unsigned)g_mode_stack.depth,
+                  (unsigned)g_mode_stack.mode[top]);
+        }
         game_loop_step();
+        if (frame_count % 600 == 0) trace("Frame %lu step returned", frame_count);
         host_process_frame();
         host_root_boundary();
     }
