@@ -100,3 +100,27 @@ Private-ROM build helper (Docker and official devkitPro image; unverified):
 `bash port/switch/build-with-rom.sh /path/to/your/EarthBound-USA.sfc`
 This script mounts the ROM read-only, extracts it locally, and attempts to
 build `EarthboundSwitch.nro`. Do not commit or upload the ROM.
+
+## Experimental native trainer (ShrineFox-inspired)
+
+This branch implements an **original native C trainer UI** inspired by the
+feature set of [ShrineFox/EarthBound-Mod-Menu](https://github.com/ShrineFox/EarthBound-Mod-Menu).
+It does not load or execute the original SNES ROM patch, CCScript or 65816 code,
+and it does not yet reproduce the entire ShrineFox mod.
+
+While in-game, hold **ZL + Plus** (or left-stick click + Plus) to open/close
+the trainer. Use **D-pad Up/Down** to choose, **Left/Right** to adjust,
+**A** to activate/increment, and **B** to close.
+
+Current trainer options: character selector, scaling, instant-text setting
+(placeholder, not yet wired into text engine), auto-heal, heal party,
+add $1000 cash, add $1000 to bank, max HP/PP, level, item ID, give item,
+speed and guts, close. Inventory grants use the engine's normal
+`give_item_to_specific_character` API. Character stats and inventory
+changes can affect saves; back up `earthbound.srm` before testing.
+Menu does not implement ShrineFox's teleport, battles, events, chaos mode,
+key-item system or music player yet.
+
+**Status:** source changes committed, cross-compilation and physical Switch
+testing not yet verified. The trainer does not fix the pre-existing
+telephone/save freeze or other unrelated native-port issues.
