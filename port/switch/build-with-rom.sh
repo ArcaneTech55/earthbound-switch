@@ -30,7 +30,8 @@ docker run --rm --platform linux/amd64 \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends python3-venv python3-pip
     python3 -m venv /tmp/eb-tools-venv
     /tmp/eb-tools-venv/bin/python -m pip install -e .
-    /tmp/eb-tools-venv/bin/ebtools extract earthbound.yml /private/earthbound.sfc
+    export PATH="/tmp/eb-tools-venv/bin:$PATH"
+    ebtools extract earthbound.yml /private/earthbound.sfc
     cmake -S port/switch -B port/switch/build \
       -DCMAKE_TOOLCHAIN_FILE="$DEVKITPRO/cmake/Switch.cmake" \
       -DCMAKE_BUILD_TYPE=Release \
