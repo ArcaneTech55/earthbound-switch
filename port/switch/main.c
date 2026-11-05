@@ -70,16 +70,16 @@ int main(int argc, char **argv) {
         goto shutdown;
     }
 
-    if (!ensure_directory("/switch") ||
-        !ensure_directory("/switch/earthbound-switch")) {
+    if (!ensure_directory("sdmc:/switch") ||
+        !ensure_directory("sdmc:/switch/earthbound-switch")) {
         fprintf(stderr, "Cannot create EarthBound save directory\n");
         exit_code = EXIT_FAILURE;
         goto shutdown;
     }
-    startup_log = fopen("/switch/earthbound-switch/startup.log", "w");
+    startup_log = fopen("sdmc:/switch/earthbound-switch/startup.log", "w");
     trace("EarthBound Switch boot diagnostics");
     trace("SD mounted; working directory set; save directory exists");
-    platform_save_set_path("/switch/earthbound-switch/earthbound.srm");
+    platform_save_set_path("sdmc:/switch/earthbound-switch/earthbound.srm");
 
     /* The Switch SDL port selects its window renderer, audio device and
      * controller backend. The video module creates the accelerated window
