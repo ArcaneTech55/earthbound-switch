@@ -2,7 +2,6 @@
 #include "../input_mapping.h"
 #include <SDL.h>
 #include "game/game_state.h"
-#include "game/inventory.h"
 #include "include/pad.h"
 
 /* SDL2 game controller driver for Nintendo Switch. SDL2 maps physical
@@ -15,9 +14,6 @@ static bool quit_requested;
 /* ZL + PLUS opens the native settings and cheats overlay. */
 bool eb_switch_menu_open = false;
 int eb_switch_menu_selected = 0;
-int eb_switch_menu_character = 0;
-int eb_switch_menu_item = 1;
-#define EB_MOD_MENU_COUNT 15
 int eb_switch_menu_scale = 0; /* nearest, integer, linear */
 bool eb_switch_menu_instant_text = false;
 bool eb_switch_menu_auto_heal = false;
@@ -33,90 +29,21 @@ static void heal_party(void) {
         for (unsigned j = 0; j < sizeof(p->afflictions); ++j) p->afflictions[j] = 0;
     }
 }
-/* Native trainer actions inspired by ShrineFox's EarthBound Mod Menu.
- * Operate on the C engine state; no patched SNES code is executed. */
-static void menu_action(int direction) {
-    CharStruct *p = &party_characters[eb_switch_menu_character];
+static void menu_action(void) {
     switch (eb_switch_menu_selected) {
         case 0:
-            eb_switch_menu_character =
-                (eb_switch_menu_character + 4 + direction) % 4;
-            break;
-        case 1:
-            eb_switch_menu_scale = (eb_switch_menu_scale + 3 + direction) % 3;
+            eb_switch_menu_scale = (eb_switch_menu_scale + 1) % 3;
             eb_switch_video_set_scale(eb_switch_menu_scale);
             break;
-        case 2: eb_switch_menu_instant_text = !eb_switch_menu_instant_text; break;
-        case 3: eb_switch_menu_auto_heal = !eb_switch_menu_auto_heal; break;
-        case 4: heal_party(); break;
-        case 5:
-            game_state.money_carried =
-                game_state.money_carried > 9998999 ? 9999999 :
-                game_state.money_carried + 1000;
+        case 1: eb_switch_menu_instant_text = !eb_switch_menu_instant_text; break;
+        case 2: eb_switch_menu_auto_heal = !eb_switch_menu_auto_heal; break;
+        case 3: heal_party(); break;
+        case 4:
+            if (game_state.money_carried < 9999000)
+                game_state.money_carried += 1000;
+            else game_state.money_carried = 9999999;
             break;
-        case 6:
-            game_state.bank_balance =
-                game_state.bank_balance > 9998999 ? 9999999 :
-                game_state.bank_balance + 1000;
-            break;
-        case 7:
-            if (p->max_hp) {
-                int hp = (int)p->max_hp + direction * 10;
-                if (hp < 1) hp = 1;
-                if (hp > 999) hp = 999;
-                p->max_hp = (uint16_t)hp;
-                p->current_hp = p->current_hp_target = p->max_hp;
-            }
-            break;
-        case 8:
-            if (p->max_hp) {
-                int pp = (int)p->max_pp + direction * 10;
-                if (pp < 0) pp = 0;
-                if (pp > 999) pp = 999;
-                p->max_pp = (uint16_t)pp;
-                p->current_pp = p->current_pp_target = p->max_pp;
-            }
-            break;
-        case 9:
-            if (p->max_hp) {
-                int level = (int)p->level + direction;
-                if (level < 1) level = 1;
-                if (level > 99) level = 99;
-                p->level = (uint8_t)level;
-            }
-            break;
-        case 10:
-            eb_switch_menu_item =
-                (eb_switch_menu_item - 1 + 254 + direction) % 254 + 1;
-            break;
-        case 11:
-            if (p->max_hp && eb_switch_menu_item >= 1 &&
-                eb_switch_menu_item < ITEM_CONFIG_COUNT)
-                (void)give_item_to_specific_character(
-                    (uint16_t)(eb_switch_menu_character + 1),
-                    (uint16_t)eb_switch_menu_item);
-            break;
-        case 12:
-            if (p->max_hp) {
-                int speed = (int)p->base_speed + direction;
-                if (speed < 1) speed = 1;
-                if (speed > 255) speed = 255;
-                p->base_speed = (uint8_t)speed;
-                recalc_character_postmath_speed(
-                    (uint16_t)(eb_switch_menu_character + 1));
-            }
-            break;
-        case 13:
-            if (p->max_hp) {
-                int guts = (int)p->base_guts + direction;
-                if (guts < 1) guts = 1;
-                if (guts > 255) guts = 255;
-                p->base_guts = (uint8_t)guts;
-                recalc_character_postmath_guts(
-                    (uint16_t)(eb_switch_menu_character + 1));
-            }
-            break;
-        case 14: eb_switch_menu_open = false; break;
+        case 5: eb_switch_menu_open = false; break;
     }
 }
 
@@ -188,11 +115,9 @@ void platform_input_poll(void) {
     uint16_t next = eb_switch_map_pad(buttons);
     if (eb_switch_menu_open) {
         uint16_t pressed = eb_switch_pad_pressed(held, next);
-        if (pressed & PAD_UP) eb_switch_menu_selected = (eb_switch_menu_selected + EB_MOD_MENU_COUNT - 1) % EB_MOD_MENU_COUNT;
-        if (pressed & PAD_DOWN) eb_switch_menu_selected = (eb_switch_menu_selected + 1) % EB_MOD_MENU_COUNT;
-        if (pressed & PAD_A) menu_action(1);
-        if (pressed & PAD_LEFT) menu_action(-1);
-        if (pressed & PAD_RIGHT) menu_action(1);
+        if (pressed & PAD_UP) eb_switch_menu_selected = (eb_switch_menu_selected + 5) % 6;
+        if (pressed & PAD_DOWN) eb_switch_menu_selected = (eb_switch_menu_selected + 1) % 6;
+        if (pressed & PAD_A) menu_action();
         if (pressed & PAD_B) eb_switch_menu_open = false;
         next = 0; /* Menu buttons must not also control EarthBound. */
     } else if (eb_switch_menu_auto_heal && frame_counter % 60 == 0) {
