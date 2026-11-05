@@ -37,6 +37,10 @@
 #include "core/mode_stack.h"
 #include <string.h>
 
+#ifdef EB_SWITCH_SAVE_TRACE
+extern void platform_save_trace(const char *stage, int slot, int outcome);
+#endif
+
 /* --- Store table ---
  * Loaded from store_table.bin (extracted from ROM).
  * 66 shops × 7 item IDs each = 462 bytes.
@@ -1289,6 +1293,11 @@ StepResult mode_step_escargo_menu(ModeState *ms) {
  */
 StepResult mode_step_telephone_menu(ModeState *ms) {
     TelephoneMenuState *st = &ms->telephone_menu;
+
+#ifdef EB_SWITCH_SAVE_TRACE
+    /* Only one entry per telephone state transition; never per input frame. */
+    platform_save_trace("PHONE_PHASE", (int)st->phase, (int)st->selection);
+#endif
 
     switch ((TelephoneMenuPhase)st->phase) {
 

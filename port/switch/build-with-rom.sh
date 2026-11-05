@@ -17,14 +17,20 @@ fi
 
 # Bind mount a LOCAL ROM outside the repository as read-only. Nothing here
 # commits, publishes, uploads, or adds the game to GitHub.
-docker run --rm \
+docker run --rm --platform linux/amd64 \
   -v "$ROOT:/src" \
   -v "$ROM:/private/earthbound.sfc:ro" \
   -w /src \
   devkitpro/devkita64 \
   bash -euc '
     git submodule update --init --recursive
-    python3 -m pip install --break-system-packages -e .
+    # The official devkitA64 image has Python but not necessarily pip/venv.
+    # Install host-side asset tooling only inside this disposable container.
+    apt-get update
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends python3-venv python3-pip
+    python3 -m venv /tmp/eb-tools-venv
+    /tmp/eb-tools-venv/bin/python -m pip install -e .
+    export PATH="/tmp/eb-tools-venv/bin:$PATH"
     ebtools extract earthbound.yml /private/earthbound.sfc
     cmake -S port/switch -B port/switch/build \
       -DCMAKE_TOOLCHAIN_FILE="$DEVKITPRO/cmake/Switch.cmake" \
@@ -35,5 +41,9 @@ docker run --rm \
     echo "Built: /src/port/switch/build/EarthboundSwitch.nro"
   '
 
-echo "Local NRO: $ROOT/port/switch/build/EarthboundSwitch.nro"
+# Keep a ready-to-copy NRO in a folder next to the user-owned ROM.
+READY_DIR="$(dirname "$ROM")/Switch-Ready"
+mkdir -p "$READY_DIR"
+cp "$ROOT/port/switch/build/EarthboundSwitch.nro" "$READY_DIR/EarthboundSwitch.nro"
+echo "Switch-ready NRO: $READY_DIR/EarthboundSwitch.nro"
 echo "Copy to sdmc:/switch/earthbound-switch/EarthboundSwitch.nro"

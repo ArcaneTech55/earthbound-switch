@@ -17,6 +17,7 @@
 #include <string.h>
 
 #include "game_main.h"
+#include "core/mode_stack.h"
 #include "platform/platform.h"
 
 /* Path selection provided by port/unix/platform/sdl2_save.c. */
@@ -70,16 +71,16 @@ int main(int argc, char **argv) {
         goto shutdown;
     }
 
-    if (!ensure_directory("/switch") ||
-        !ensure_directory("/switch/earthbound-switch")) {
+    if (!ensure_directory("sdmc:/switch") ||
+        !ensure_directory("sdmc:/switch/earthbound-switch")) {
         fprintf(stderr, "Cannot create EarthBound save directory\n");
         exit_code = EXIT_FAILURE;
         goto shutdown;
     }
-    startup_log = fopen("/switch/earthbound-switch/startup.log", "w");
+    startup_log = fopen("sdmc:/switch/earthbound-switch/startup.log", "w");
     trace("EarthBound Switch boot diagnostics");
     trace("SD mounted; working directory set; save directory exists");
-    platform_save_set_path("/switch/earthbound-switch/earthbound.srm");
+    platform_save_set_path("sdmc:/switch/earthbound-switch/earthbound.srm");
 
     /* The Switch SDL port selects its window renderer, audio device and
      * controller backend. The video module creates the accelerated window
@@ -159,7 +160,16 @@ int main(int argc, char **argv) {
     while (appletMainLoop() && !platform_input_quit_requested()) {
         if (frame_count == 0) trace("First game loop frame");
         if (++frame_count == 60) trace("60 game loop frames completed");
+        /* Sparse progress markers distinguish a true engine hang from a
+         * telephone dialogue waiting for input. Never log every frame. */
+        if (frame_count % 600 == 0 && g_mode_stack.depth > 0) {
+            unsigned top = g_mode_stack.depth - 1;
+            trace("Frame %lu begin: depth=%u mode=%u", frame_count,
+                  (unsigned)g_mode_stack.depth,
+                  (unsigned)g_mode_stack.mode[top]);
+        }
         game_loop_step();
+        if (frame_count % 600 == 0) trace("Frame %lu step returned", frame_count);
         host_process_frame();
         host_root_boundary();
     }

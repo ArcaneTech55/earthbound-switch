@@ -6,6 +6,10 @@
 #include "platform/platform.h"
 #include <string.h>
 
+#ifdef EB_SWITCH_SAVE_TRACE
+extern void platform_save_trace(const char *stage, int slot, int outcome);
+#endif
+
 GameState game_state;
 CharStruct party_characters[TOTAL_PARTY_COUNT];
 uint8_t event_flags[EVENT_FLAG_COUNT / 8];
@@ -537,7 +541,15 @@ void check_sram_integrity(void) {
  * it then stands, padding included. So each copy is read back, patched and
  * rewritten. */
 bool save_game(int slot) {
-    if (slot < 0 || slot >= SAVE_COUNT) return false;
+    if (slot < 0 || slot >= SAVE_COUNT) {
+#ifdef EB_SWITCH_SAVE_TRACE
+        platform_save_trace("SAVE_INVALID_SLOT", slot, 0);
+#endif
+        return false;
+    }
+#ifdef EB_SWITCH_SAVE_TRACE
+    platform_save_trace("SAVE_BEGIN", slot, 0);
+#endif
 
     SaveBlock *block = &ert.save_scratch;
 
@@ -557,9 +569,16 @@ bool save_game(int slot) {
         block->header.checksum = compute_add_checksum(block);
         block->header.checksum_complement = compute_xor_checksum(block);
 
-        if (!sram_write_block(b, block))
+        if (!sram_write_block(b, block)) {
+#ifdef EB_SWITCH_SAVE_TRACE
+            platform_save_trace("SAVE_WRITE_FAILED", slot, b);
+#endif
             return false;
+        }
     }
+#ifdef EB_SWITCH_SAVE_TRACE
+    platform_save_trace("SAVE_COMPLETE", slot, 1);
+#endif
     return true;
 }
 

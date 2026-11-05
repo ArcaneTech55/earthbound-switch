@@ -39,6 +39,7 @@ add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/../../src"
 
 # The embedded savestate stub is compiled as part of earthbound_game.
 target_compile_definitions(earthbound_game PUBLIC EB_EMBEDDED=1)
+target_compile_definitions(earthbound_game PRIVATE EB_SWITCH_SAVE_TRACE=1)
 target_compile_definitions(earthbound_game PRIVATE EB_SWITCH_SCENE_ART=1)
 target_include_directories(earthbound_game PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/widescreen")
