@@ -41,5 +41,5 @@ docker run --rm --platform linux/amd64 \
     echo "Built: /src/port/switch/build/EarthboundSwitch.nro"
   '
 
-echo "Local NRO: $ROOT/port/switch/build/EarthboundSwitch.nro"
+# Keep a ready-to-copy NRO in a folder next to the user-owned ROM.\nREADY_DIR="$(dirname "$ROM")/Switch-Ready"\nmkdir -p "$READY_DIR"\ncp "$ROOT/port/switch/build/EarthboundSwitch.nro" "$READY_DIR/EarthboundSwitch.nro"\necho "Switch-ready NRO: $READY_DIR/EarthboundSwitch.nro"
 echo "Copy to sdmc:/switch/earthbound-switch/EarthboundSwitch.nro"
