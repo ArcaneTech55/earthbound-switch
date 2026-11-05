@@ -11,12 +11,14 @@
 static SDL_GameController *controller;
 static uint16_t held,previous;
 static bool quit_requested;
-/* ZL + PLUS opens the native settings and cheats overlay. */
+/* ZL + PLUS opens the native ShrineFox-inspired trainer overlay. */
 bool eb_switch_menu_open = false;
 int eb_switch_menu_selected = 0;
 int eb_switch_menu_scale = 0; /* nearest, integer, linear */
 bool eb_switch_menu_instant_text = false;
 bool eb_switch_menu_auto_heal = false;
+int eb_switch_menu_last_action = 0;
+#define EB_NATIVE_MENU_COUNT 9
 static bool menu_combo_latched = false;
 static uint32_t frame_counter = 0;
 extern void eb_switch_video_set_scale(int mode);
@@ -30,6 +32,7 @@ static void heal_party(void) {
     }
 }
 static void menu_action(void) {
+    eb_switch_menu_last_action = eb_switch_menu_selected;
     switch (eb_switch_menu_selected) {
         case 0:
             eb_switch_menu_scale = (eb_switch_menu_scale + 1) % 3;
@@ -43,7 +46,32 @@ static void menu_action(void) {
                 game_state.money_carried += 1000;
             else game_state.money_carried = 9999999;
             break;
-        case 5: eb_switch_menu_open = false; break;
+        case 5:
+            /* Bank deposit: keep within game's documented money ceiling. */
+            if (game_state.money_carried >= 1000 &&
+                game_state.bank_balance <= 9998999) {
+                game_state.money_carried -= 1000;
+                game_state.bank_balance += 1000;
+            }
+            break;
+        case 6:
+            /* Withdraw without creating money or overflowing carried funds. */
+            if (game_state.bank_balance >= 1000 &&
+                game_state.money_carried <= 9998999) {
+                game_state.bank_balance -= 1000;
+                game_state.money_carried += 1000;
+            }
+            break;
+        case 7:
+            /* Restore party HP/PP, but preserve status effects. */
+            for (int i = 0; i < 4; ++i) {
+                CharStruct *p = &party_characters[i];
+                if (!p->max_hp) continue;
+                p->current_hp = p->current_hp_target = p->max_hp;
+                p->current_pp = p->current_pp_target = p->max_pp;
+            }
+            break;
+        case 8: eb_switch_menu_open = false; break;
     }
 }
 
@@ -115,8 +143,8 @@ void platform_input_poll(void) {
     uint16_t next = eb_switch_map_pad(buttons);
     if (eb_switch_menu_open) {
         uint16_t pressed = eb_switch_pad_pressed(held, next);
-        if (pressed & PAD_UP) eb_switch_menu_selected = (eb_switch_menu_selected + 5) % 6;
-        if (pressed & PAD_DOWN) eb_switch_menu_selected = (eb_switch_menu_selected + 1) % 6;
+        if (pressed & PAD_UP) eb_switch_menu_selected = (eb_switch_menu_selected + EB_NATIVE_MENU_COUNT - 1) % EB_NATIVE_MENU_COUNT;
+        if (pressed & PAD_DOWN) eb_switch_menu_selected = (eb_switch_menu_selected + 1) % EB_NATIVE_MENU_COUNT;
         if (pressed & PAD_A) menu_action();
         if (pressed & PAD_B) eb_switch_menu_open = false;
         next = 0; /* Menu buttons must not also control EarthBound. */
