@@ -87,7 +87,7 @@ static void menu_action(int direction) {
             break;
         case 10:
             eb_switch_menu_item =
-                (eb_switch_menu_item + 254 + direction) % 254 + 1;
+                (eb_switch_menu_item - 1 + 254 + direction) % 254 + 1;
             break;
         case 11:
             if (p->max_hp && eb_switch_menu_item >= 1 &&
