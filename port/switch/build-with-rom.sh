@@ -17,15 +17,20 @@ fi
 
 # Bind mount a LOCAL ROM outside the repository as read-only. Nothing here
 # commits, publishes, uploads, or adds the game to GitHub.
-docker run --rm \
+docker run --rm --platform linux/amd64 \
   -v "$ROOT:/src" \
   -v "$ROM:/private/earthbound.sfc:ro" \
   -w /src \
   devkitpro/devkita64 \
   bash -euc '
     git submodule update --init --recursive
-    python3 -m pip install --break-system-packages -e .
-    ebtools extract earthbound.yml /private/earthbound.sfc
+    # The official devkitA64 image has Python but not necessarily pip/venv.
+    # Install host-side asset tooling only inside this disposable container.
+    apt-get update
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends python3-venv python3-pip
+    python3 -m venv /tmp/eb-tools-venv
+    /tmp/eb-tools-venv/bin/python -m pip install -e .
+    /tmp/eb-tools-venv/bin/ebtools extract earthbound.yml /private/earthbound.sfc
     cmake -S port/switch -B port/switch/build \
       -DCMAKE_TOOLCHAIN_FILE="$DEVKITPRO/cmake/Switch.cmake" \
       -DCMAKE_BUILD_TYPE=Release \
