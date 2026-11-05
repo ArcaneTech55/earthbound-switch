@@ -20,6 +20,18 @@ static pixel_t frame[EB_VIEWPORT_WIDTH*EB_VIEWPORT_HEIGHT];
 static bool use_vsync=true;
 static EbScaleMode scale_mode=EB_SCALE_ASPECT_NEAREST;
 
+/* Called by the existing Switch input menu; keep presentation state local
+ * to the video backend instead of leaving an unresolved external symbol. */
+void eb_switch_video_set_scale(int mode) {
+    switch (mode) {
+    case 1: scale_mode = EB_SCALE_INTEGER; break;
+    case 2: scale_mode = EB_SCALE_ASPECT_LINEAR; break;
+    default: scale_mode = EB_SCALE_ASPECT_NEAREST; break;
+    }
+    SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY,
+                scale_mode == EB_SCALE_ASPECT_LINEAR ? "linear" : "nearest");
+}
+
 static void read_presentation_settings(void) {
     FILE *f=fopen("/switch/earthbound-switch/scaling.cfg","r");
     if(!f)return;
