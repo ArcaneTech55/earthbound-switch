@@ -61,6 +61,28 @@ int main(int argc, char **argv) {
     int status = 0;
     assert(waitpid(child, &status, 0) == child);
     assert(WIFEXITED(status) && WEXITSTATUS(status) == 0);
+
+    /* Simulate power loss after moving live SRAM to .bak but before a new
+     * file is installed: the next startup must restore the backup. */
+    char backup[280];
+    snprintf(backup, sizeof(backup), "%s.bak", path);
+    assert(rename(path, backup) == 0);
+    assert(platform_save_init());
+    assert(platform_save_read(out, 0, sizeof(out)) == sizeof(out));
+    assert(memcmp(second, out, sizeof(out)) == 0);
+
+    /* A malformed oversized SRAM file must never be silently truncated. */
+    FILE *oversize = fopen(path, "r+b");
+    assert(oversize);
+    assert(fseek(oversize, 8192, SEEK_SET) == 0);
+    assert(fputc(0x7f, oversize) != EOF);
+    assert(fclose(oversize) == 0);
+    assert(!platform_save_write(first, 0, sizeof(first)));
+    oversize = fopen(path, "rb");
+    assert(oversize);
+    assert(fseek(oversize, 0, SEEK_END) == 0);
+    assert(ftell(oversize) == 8193);
+    fclose(oversize);
     unlink(path);
     rmdir(dir);
     return 0;
