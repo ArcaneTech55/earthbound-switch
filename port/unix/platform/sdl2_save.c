@@ -224,7 +224,9 @@ bool platform_save_write(const void *src, size_t offset, size_t size) {
 #ifdef _WIN32
     if (ok && _commit(_fileno(wf)) != 0) /* durability: the new file must hit stable storage */
         ok = false;
-#elif !defined(__SWITCH__)
+#else
+    /* libnx's fsdev_fsync() calls fsFileFlush(), so SD writes must use it
+     * before close/rename. The earlier Switch exception lost this guarantee. */
     if (ok && fsync(fileno(wf)) != 0) /* durability: the new file must hit stable storage */
         ok = false;
 #endif
